@@ -129,6 +129,7 @@ namespace NakamaWebRTC
         public delegate void Error(string message);
         [Signal]
         public delegate void ErrorCode(int code, string message, object extra); // TODO: Remove extra if unused. originally used for exceptions, which are not needed for C#
+        // TODO: Rename this to avoid collision
         [Signal]
         public delegate void Disconnected();
 

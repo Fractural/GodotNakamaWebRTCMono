@@ -1,2 +1,0 @@
-﻿49364
-C:/Program Files/Godot/Official/godot.exe
