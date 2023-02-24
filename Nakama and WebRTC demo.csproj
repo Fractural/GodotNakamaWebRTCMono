@@ -3,4 +3,9 @@
     <TargetFramework>net472</TargetFramework>
     <RootNamespace>NakamaandWebRTCdemo</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Nakama">
+      <HintPath>addons\NakamaMono\Nakama.dll</HintPath>
+    </Reference>
+  </ItemGroup>
 </Project>

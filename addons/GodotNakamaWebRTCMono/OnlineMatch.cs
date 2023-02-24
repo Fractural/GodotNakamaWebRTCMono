@@ -1,5 +1,6 @@
 using Godot;
 using Nakama;
+using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using GDC = Godot.Collections;
@@ -75,7 +76,37 @@ namespace NakamaWebRTC
         }
         public NetworkRelay UseNetworkRelay = NetworkRelay.Auto;
 
-        // TODO Insert connection to nakama here
+        private ISocket nakamaSocket;
+        public ISocket NakamaSocket
+        {
+            get => nakamaSocket;
+            private set
+            {
+                if (value == nakamaSocket)
+                    return;
+
+                if (nakamaSocket != null)
+                {
+                    nakamaSocket.Closed -= OnNakamaClosed;
+                    nakamaSocket.ReceivedError -= OnNakamaError;
+                    nakamaSocket.ReceivedMatchState -= OnNakamaMatchState;
+                    nakamaSocket.ReceivedMatchPresence -= OnNakamaMatchPresence;
+                    nakamaSocket.ReceivedMatchmakerMatched -= OnNakamaMatchmakerMatched;
+                }
+
+                nakamaSocket = value;
+
+                if (nakamaSocket != null)
+                {
+                    nakamaSocket.Closed += OnNakamaClosed;
+                    nakamaSocket.ReceivedError += OnNakamaError;
+                    nakamaSocket.ReceivedMatchState += OnNakamaMatchState;
+                    nakamaSocket.ReceivedMatchPresence += OnNakamaMatchPresence;
+                    nakamaSocket.ReceivedMatchmakerMatched += OnNakamaMatchmakerMatched;
+                }
+            }
+        }
+
         public string MySessionID { get; private set; }
         public string MatchID { get; private set; }
         public string MatchmakerTicket { get; private set; }
@@ -84,29 +115,14 @@ namespace NakamaWebRTC
         private Dictionary<string, WebRTCPeerConnection> webrtcPeers;
         private Dictionary<string, bool> webrtcPeersConnected;
 
-        public class Player : Godot.Object
-        {
-            public string SessionID { get; set; }
-            public string Username { get; set; }
-            public int PeerID { get; set; }
+        /// <summary>
+        /// Session ID to Player dictionary
+        /// </summary>
+        public Dictionary<string, Player> Players { get; private set; }
+        private int nextPeerID;
 
-            public Player(string sessionID, string username, int peerID)
-            {
-                SessionID = sessionID;
-                Username = username;
-                PeerID = peerID;
-            }
-
-            public static Player FromPresence(IUserPresence presence, int peerID)
-            {
-                return new Player(presence.SessionId, presence.Username, peerID);
-            }
-
-            // TODO
-            //public static Player FromDict(GDC.Dictionary)
-        }
-
-        public MatchState MatchState { get; set; }
+        public MatchMode MatchMode { get; private set; } = MatchMode.None;
+        public MatchState MatchState { get; private set; } = MatchState.Lobby;
         public static readonly IReadOnlyDictionary<JoinErrorReason, string> JoinErrorMessages = new Dictionary<JoinErrorReason, string>()
         {
             [JoinErrorReason.MatchHasAlreadyBegun] = "Sorry! The match has already begun.",
@@ -125,27 +141,72 @@ namespace NakamaWebRTC
             [ErrorCode.WebRTCOfferError] = "Unable to create WebRTC offer",
         };
 
-        [Signal]
-        public delegate void Error(string message);
-        [Signal]
-        public delegate void ErrorCode(int code, string message, object extra); // TODO: Remove extra if unused. originally used for exceptions, which are not needed for C#
+        // string message
+        public event Action<string> OnError;
+        // int code, string message, object extra
+        public event Action<ErrorCode, string, object> OnErrorCode;
+        // TODO: Remove extra if unused. originally used for exceptions, which are not needed for C#
+
         // TODO: Rename this to avoid collision
-        [Signal]
-        public delegate void Disconnected();
+        public event Action Disconnected;
 
-        [Signal]
-        public delegate void MatchCreated(string matchID);
-        [Signal]
-        public delegate void MatchJoined(string matchID);
-        [Signal]
-        public delegate void MatchmakerMatched(string matchID);
+        // string matchID
+        public event Action<string> MatchCreated;
+        // string matchID
+        public event Action<string> MatchJoined;
+        // string matchID
+        public event Action<string> MatchmakerMatched;
 
-        [Signal]
-        public delegate void PlayerJoined(Player player);
-        [Signal]
-        public delegate void PlayerLeft(Player player);
-        [Signal]
-        public delegate void PlayerStatusChanged(Player player, int status);
+        // Player player
+        public event Action<Player> PlayerJoined;
+        // Player player
+        public event Action<Player> PlayerLeft;
+        // Player player, int status
+        public event Action<Player, int> PlayerStatusChanged;
+
+        // Player[] Players
+        public event Action<Player[]> MatchReady;
+        public event Action MatchNotReady;
+
+        // WebRTCPeerConnection webrtcPeer, Player player
+        public event Action<WebRTCPeerConnection, Player> WebRTCPeerAdded;
+        // WebRTCPeerConnection webrtcPeer, Player player
+        public event Action<WebRTCPeerConnection, Player> WebRTCPeerRemoved;
+
+        [Serializable]
+        public class Player
+        {
+            public string SessionID { get; set; }
+            public string Username { get; set; }
+            public int PeerID { get; set; }
+
+            public Player(string sessionID, string username, int peerID)
+            {
+                SessionID = sessionID;
+                Username = username;
+                PeerID = peerID;
+            }
+
+            public static Player FromPresence(IUserPresence presence, int peerID)
+            {
+                return new Player(presence.SessionId, presence.Username, peerID);
+            }
+        }
+
+        public class PlayersPayload
+        {
+            public Player[] Players { get; set; }
+        }
+
+        private string SerializePlayersPayload(PlayersPayload players)
+        {
+            return JsonSerializer.Serialize(players);
+        }
+
+        private PlayersPayload DeserializePlayersPayload(string json)
+        {
+            return JsonSerializer.Deserialize<PlayersPayload>(json);
+        }
 
         public OnlineMatch()
         {
@@ -157,6 +218,111 @@ namespace NakamaWebRTC
         {
             var webrtcPeer = new WebRTCPeerConnection();
             webrtcPeer.Initialize();
+        }
+
+
+        private void EmitError(ErrorCode code, object extra)
+        {
+            string message = ErrorMessages[code];
+            if (code == ErrorCode.ClientJoinError)
+                message = JoinErrorMessages[(JoinErrorReason)extra];
+            OnError?.Invoke(message);
+            OnErrorCode?.Invoke(code, message, extra);
+        }
+
+        public async void CreateMatch(ISocket nakamaSocket)
+        {
+            Leave();
+            NakamaSocket = nakamaSocket;
+
+            try
+            {
+                IMatch match = await nakamaSocket.CreateMatchAsync();
+                OnNakamaMatchCreated(match);
+            }
+            catch (ApiResponseException ex)
+            {
+                Leave();
+                EmitError(ErrorCode.MatchCreateFailed, ex);
+                // TODO: Maybe remove emit error altogether if error is already handled by the exception itself
+            }
+        }
+
+        public async void JoinMatch(ISocket nakamaSocket, string matchID)
+        {
+            Leave();
+            NakamaSocket = nakamaSocket;
+            MatchMode = MatchMode.Join;
+
+            try
+            {
+                IMatch match = await NakamaSocket.JoinMatchAsync(matchID);
+                OnNakamaMatchJoined(match);
+            }
+            catch (ApiResponseException ex)
+            {
+                Leave();
+                EmitError(ErrorCode.JoinMatchFailed, ex);
+            }
+        }
+
+        public class MatchmakingArgs
+        {
+            public string Query = "*";
+            public int MinCount = 2;
+            public int MaxCount = 8;
+            public Dictionary<string, string> stringProperties = null;
+            public Dictionary<string, double> numericProperties = null;
+            public int? countMultiple = null;
+        }
+
+        public void StartMatchmaking(ISocket nakamaSocket, MatchmakingArgs args)
+        {
+            Leave();
+            NakamaSocket = nakamaSocket;
+            MatchMode = MatchMode.Matchmaker;
+
+            nakamaSocket.AddMatchmakerAsync(args.Query, args.MinCount, args.MaxCount, args.stringProperties, args.numericProperties, args.countMultiple);
+        }
+
+        private void OnNakamaMatchJoined(IMatch match)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaMatchCreated(IMatch match)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void Leave()
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaMatchmakerMatched(IMatchmakerMatched obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaMatchPresence(IMatchPresenceEvent obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaMatchState(IMatchState obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaError(Exception obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void OnNakamaClosed()
+        {
+            throw new NotImplementedException();
         }
     }
 }

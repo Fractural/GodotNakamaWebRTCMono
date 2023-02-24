@@ -1,12 +1,12 @@
 [gd_scene load_steps=9 format=2]
 
-[ext_resource path="res://Main.gd" type="Script" id=1]
-[ext_resource path="res://main/screens/ConnectionScreen.tscn" type="PackedScene" id=2]
+[ext_resource path="res://GDScript/scripts/Main.gd" type="Script" id=1]
+[ext_resource path="res://GDScript/main/screens/ConnectionScreen.tscn" type="PackedScene" id=2]
 [ext_resource path="res://Game.tscn" type="PackedScene" id=3]
-[ext_resource path="res://main/screens/MatchScreen.tscn" type="PackedScene" id=4]
-[ext_resource path="res://main/UILayer.gd" type="Script" id=5]
-[ext_resource path="res://main/screens/ReadyScreen.tscn" type="PackedScene" id=6]
-[ext_resource path="res://main/screens/TitleScreen.tscn" type="PackedScene" id=7]
+[ext_resource path="res://GDScript/main/screens/MatchScreen.tscn" type="PackedScene" id=4]
+[ext_resource path="res://GDScript/main/UILayer.gd" type="Script" id=5]
+[ext_resource path="res://GDScript/main/screens/ReadyScreen.tscn" type="PackedScene" id=6]
+[ext_resource path="res://GDScript/main/screens/TitleScreen.tscn" type="PackedScene" id=7]
 [ext_resource path="res://assets/fonts/monogram.tres" type="DynamicFont" id=8]
 
 [node name="Main" type="Node2D"]

@@ -79,10 +79,15 @@ _global_script_classes=[ {
 "language": "GDScript",
 "path": "res://addons/com.heroiclabs.nakama/api/NakamaWriteStorageObject.gd"
 }, {
+"base": "Control",
+"class": "Screen",
+"language": "GDScript",
+"path": "res://GDScript/main/Screen.gd"
+}, {
 "base": "CanvasLayer",
 "class": "UILayer",
 "language": "GDScript",
-"path": "res://main/UILayer.gd"
+"path": "res://GDScript/main/UILayer.gd"
 } ]
 _global_script_class_icons={
 "NakamaAPI": "",
@@ -99,22 +104,23 @@ _global_script_class_icons={
 "NakamaSocketAdapter": "",
 "NakamaStorageObjectId": "",
 "NakamaWriteStorageObject": "",
+"Screen": "",
 "UILayer": ""
 }
 
 [application]
 
 config/name="GodotNakamaWebRTCMono"
-run/main_scene="res://Main.tscn"
+run/main_scene="res://GDScript/main/Main.tscn"
 config/icon="res://icon.png"
 
 [autoload]
 
-Build="*res://autoload/Build.gd"
+Build="*res://GDScript/autoload/Build.gd"
 Nakama="*res://addons/com.heroiclabs.nakama/Nakama.gd"
 OnlineMatch="*res://addons/nakama-webrtc/OnlineMatch.gd"
-Online="*res://autoload/Online.gd"
-GameState="*res://autoload/GameState.gd"
+Online="*res://GDScript/autoload/Online.gd"
+GameState="*res://GDScript/autoload/GameState.gd"
 
 [debug]
 
