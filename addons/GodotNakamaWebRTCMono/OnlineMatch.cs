@@ -1,14 +1,15 @@
 using Godot;
 using Nakama;
-using System.Text.Json;
 using System;
 using System.Collections.Generic;
 using GDC = Godot.Collections;
 using System.Diagnostics;
 using System.Text;
+using System.Linq;
 
 namespace NakamaWebRTC
 {
+    #region Enums & Helper Classes
     // NOTE: PeerID is from WebRTC
     //       SessionID is from Nakama
     public enum MatchState
@@ -64,10 +65,66 @@ namespace NakamaWebRTC
     public class IceServersConfig
     {
         public string[] Urls { get; set; } = new string[0];
+        public GDC.Dictionary ToGDDict()
+        {
+            return new
+            {
+                urls = Urls
+            }.ToGDDict();
+        }
     }
+
+    public class MatchmakingArgs
+    {
+        public string Query = "*";
+        public int MinCount = 2;
+        public int MaxCount = 8;
+        public Dictionary<string, string> stringProperties = null;
+        public Dictionary<string, double> numericProperties = null;
+        public int? countMultiple = null;
+    }
+
+    public class Player : Godot.Object, IBufferSerializable
+    {
+        public string SessionID { get; set; }
+        public string Username { get; set; }
+        public int PeerID { get; set; }
+
+        public Player() { }
+
+        public Player(string sessionID, string username, int peerID)
+        {
+            SessionID = sessionID;
+            Username = username;
+            PeerID = peerID;
+        }
+
+        public static Player FromPresence(IUserPresence presence, int peerID)
+        {
+            return new Player(presence.SessionId, presence.Username, peerID);
+        }
+
+        public void Serialize(StreamPeerBuffer buffer)
+        {
+            buffer.PutString(SessionID);
+            buffer.PutString(Username);
+            buffer.Put32(PeerID);
+        }
+
+        public void Deserialize(StreamPeerBuffer buffer)
+        {
+            SessionID = buffer.GetString();
+            Username = buffer.GetString();
+            PeerID = buffer.Get32();
+        }
+    }
+    #endregion
 
     public class OnlineMatch : Node
     {
+        public static OnlineMatch Global { get; private set; }
+
+        #region Settings
         public int MinPlayers { get; set; } = 2;
         public int MaxPlayers { get; set; } = 4;
         public string ClientVersion => "dev";
@@ -87,7 +144,10 @@ namespace NakamaWebRTC
             Disabled
         }
         public NetworkRelay UseNetworkRelay = NetworkRelay.Auto;
+        #endregion
 
+        #region Vars
+        #region Nakama Vars
         private ISocket nakamaSocket;
         public ISocket NakamaSocket
         {
@@ -118,23 +178,26 @@ namespace NakamaWebRTC
                 }
             }
         }
-
         public string MySessionID { get; private set; }
         public string MatchID { get; private set; }
         public IMatchmakerTicket MatchmakerTicket { get; private set; }
+        #endregion
 
+        #region WebRTC Vars
         private WebRTCMultiplayer webrtcMultiplayer;
-        private Dictionary<string, WebRTCPeerConnection> webrtcPeers;
-        private Dictionary<string, bool> webrtcPeersConnected;
+        private Dictionary<string, WebRTCPeerConnection> webrtcPeers = new Dictionary<string, WebRTCPeerConnection>();
+        private Dictionary<string, bool> webrtcPeersConnected = new Dictionary<string, bool>();
+        #endregion
 
-        public IEnumerable<string> SessionIDs => sessionIDToPlayers.Keys;
-        public IEnumerable<Player> Players => sessionIDToPlayers.Values;
+        #region Player Vars
         /// <summary>
         /// Session ID to Player dictionary
         /// </summary>
-        private Dictionary<string, Player> sessionIDToPlayers;
+        private Dictionary<string, Player> sessionIDToPlayers = new Dictionary<string, Player>();
         private int nextPeerID;
+        #endregion
 
+        #region Readonly Vars
         public MatchMode MatchMode { get; private set; } = MatchMode.None;
         public MatchState MatchState { get; private set; } = MatchState.Lobby;
         public static readonly IReadOnlyDictionary<JoinErrorReason, string> JoinErrorMessages = new Dictionary<JoinErrorReason, string>()
@@ -154,7 +217,12 @@ namespace NakamaWebRTC
             [ErrorCode.ClientJoinError] = "Client not allowed to join",
             [ErrorCode.WebRTCOfferError] = "Unable to create WebRTC offer",
         };
+        public IReadOnlyCollection<string> SessionIDs => sessionIDToPlayers.Keys;
+        public IReadOnlyCollection<Player> Players => sessionIDToPlayers.Values;
+        #endregion
+        #endregion
 
+        #region Events
         // string message
         public event Action<string> OnError;
         // int code, string message, object extra
@@ -169,7 +237,7 @@ namespace NakamaWebRTC
         // string matchID
         public event Action<string> MatchJoined;
         // IEnumerable<Player> players
-        public event Action<IEnumerable<Player>> MatchmakerMatched;
+        public event Action<IReadOnlyCollection<Player>> MatchmakerMatched;
 
         // Player player
         public event Action<Player> PlayerJoined;
@@ -179,45 +247,157 @@ namespace NakamaWebRTC
         public event Action<Player, PlayerStatus> PlayerStatusChanged;
 
         // IEnumerable<Player> Players
-        public event Action<IEnumerable<Player>> MatchReady;
+        public event Action<IReadOnlyCollection<Player>> MatchReady;
         public event Action MatchNotReady;
 
         // WebRTCPeerConnection webrtcPeer, Player player
         public event Action<WebRTCPeerConnection, Player> WebRTCPeerAdded;
         // WebRTCPeerConnection webrtcPeer, Player player
         public event Action<WebRTCPeerConnection, Player> WebRTCPeerRemoved;
+        #endregion
 
-        [Serializable]
-        public class Player
+        #region Match State Payloads
+        public class WebRTCPeerMethodPayload : IBufferSerializable
         {
-            public string SessionID { get; set; }
-            public string Username { get; set; }
-            public int PeerID { get; set; }
 
-            public Player(string sessionID, string username, int peerID)
+            public enum MethodType
             {
-                SessionID = sessionID;
-                Username = username;
-                PeerID = peerID;
+                SetRemoteDescription,
+                AddIceCandidate,
+                Reconnect
             }
 
-            public static Player FromPresence(IUserPresence presence, int peerID)
+            public MethodType Method { get; set; }
+
+            /// <summary>
+            /// Session ID of target player
+            /// </summary>
+            public string Target { get; set; }
+            public object[] Arguments { get; set; } = null;
+
+            public T GetArg<T>(int index)
             {
-                return new Player(presence.SessionId, presence.Username, peerID);
+                return (T)Arguments[index];
+            }
+
+            public void Serialize(StreamPeerBuffer buffer)
+            {
+                buffer.PutU8((byte)Method);
+                buffer.PutString(Target);
+                buffer.PutU8((byte)Arguments.Length);
+                foreach (var arg in Arguments)
+                {
+                    TypeCode typeCode = Type.GetTypeCode(arg.GetType());
+                    buffer.PutU8((byte)typeCode);
+                    switch (typeCode)
+                    {
+                        case TypeCode.Byte:
+                            buffer.PutU8((byte)arg);
+                            break;
+                        case TypeCode.Int32:
+                            buffer.Put32((int)arg);
+                            break;
+                        case TypeCode.Int64:
+                            buffer.Put64((long)arg);
+                            break;
+                        case TypeCode.Single:
+                            buffer.PutFloat((float)arg);
+                            break;
+                        case TypeCode.Double:
+                            buffer.PutDouble((double)arg);
+                            break;
+                        case TypeCode.Char:
+                            buffer.PutString(arg.ToString());
+                            break;
+                        case TypeCode.Boolean:
+                            buffer.PutU8(Convert.ToByte(arg));
+                            break;
+                        case TypeCode.String:
+                            buffer.PutString((string)arg);
+                            break;
+                        default:
+                            throw new Exception($"{nameof(WebRTCPeerMethodPayload)}: Cannot serialize argument with unhandled type code \"{typeCode}\"");
+                    }
+                }
+
+            }
+
+            public void Deserialize(StreamPeerBuffer buffer)
+            {
+                Method = (MethodType)buffer.GetU8();
+                Target = buffer.GetString();
+                int argCount = buffer.GetU8();
+                Arguments = new object[argCount];
+                for (int i = 0; i < argCount; i++)
+                {
+                    TypeCode typeCode = (TypeCode)buffer.GetU8();
+                    switch (typeCode)
+                    {
+                        case TypeCode.Byte:
+                            Arguments[i] = buffer.GetU8();
+                            break;
+                        case TypeCode.Int32:
+                            Arguments[i] = buffer.Get32();
+                            break;
+                        case TypeCode.Int64:
+                            Arguments[i] = buffer.Get64();
+                            break;
+                        case TypeCode.Single:
+                            Arguments[i] = buffer.GetFloat();
+                            break;
+                        case TypeCode.Double:
+                            Arguments[i] = buffer.GetDouble();
+                            break;
+                        case TypeCode.Char:
+                            Arguments[i] = buffer.GetString()[0];
+                            break;
+                        case TypeCode.Boolean:
+                            Arguments[i] = Convert.ToBoolean(buffer.GetU8());
+                            break;
+                        case TypeCode.String:
+                            Arguments[i] = buffer.GetString();
+                            break;
+                        default:
+                            throw new Exception($"{nameof(WebRTCPeerMethodPayload)}: Cannot deserialize argument with unhandled type code \"{typeCode}\"");
+                    }
+                }
             }
         }
 
-        #region Match State Payloads
-        public class JoinSuccessPayload
+        public class JoinSuccessPayload : IBufferSerializable
         {
             /// <summary>
             /// Session ID to player
             /// </summary>
-            public Dictionary<string, Player> Players { get; set; }
-            public string ClientVersion { get; set; }
+            public IReadOnlyCollection<Player> Players { get; set; }
+            public string HostClientVersion { get; set; }
+
+            public void Serialize(StreamPeerBuffer buffer)
+            {
+                buffer.Put32(Players.Count);
+                foreach (var player in Players)
+                    player.Serialize(buffer);
+                buffer.PutString(HostClientVersion);
+            }
+
+            public void Deserialize(StreamPeerBuffer buffer)
+            {
+                var playersList = new List<Player>();
+
+                int playerCount = buffer.Get32();
+                for (int i = 0; i < playerCount; i++)
+                {
+                    var player = new Player();
+                    player.Deserialize(buffer);
+                    playersList.Add(player);
+                }
+
+                Players = playersList;
+                HostClientVersion = buffer.GetString();
+            }
         }
 
-        public class JoinErrorPayload
+        public class JoinErrorPayload : IBufferSerializable
         {
             /// <summary>
             /// Target player's session ID
@@ -225,34 +405,44 @@ namespace NakamaWebRTC
             public string Target { get; set; }
             public JoinErrorReason Code { get; set; }
             public string Reason { get; set; }
+
+            public void Serialize(StreamPeerBuffer buffer)
+            {
+                buffer.PutString(Target);
+                buffer.Put32((int)Code);
+                buffer.PutString(Reason);
+            }
+
+            public void Deserialize(StreamPeerBuffer buffer)
+            {
+                Target = buffer.GetString();
+                Code = (JoinErrorReason)buffer.Get32();
+                Reason = buffer.GetString();
+            }
         }
         #endregion
 
-        // TODO: Remove if unneeeded
-        //private string SerializePlayersPayload(PlayersPayload players)
-        //{
-        //    return JsonSerializer.Serialize(players);
-        //}
-
-        //private PlayersPayload DeserializePlayersPayload(string json)
-        //{
-        //    return JsonSerializer.Deserialize<PlayersPayload>(json);
-        //}
-
+        #region Public API
         public override void _Ready()
         {
+            if (Global != null)
+            {
+                QueueFree();
+                return;
+            }
+            Global = this;
+
             var webrtcPeer = new WebRTCPeerConnection();
             webrtcPeer.Initialize();
         }
 
-
-        private void EmitError(ErrorCode code, object extra = null)
+        public override void _Notification(int what)
         {
-            string message = ErrorMessages[code];
-            if (code == ErrorCode.ClientJoinError)
-                message = JoinErrorMessages[(JoinErrorReason)extra];
-            OnError?.Invoke(message);
-            OnErrorCode?.Invoke(code, message, extra);
+            if (what == NotificationPredelete)
+            {
+                if (Global == this)
+                    Global = null;
+            }
         }
 
         public async void CreateMatch(ISocket nakamaSocket)
@@ -289,16 +479,6 @@ namespace NakamaWebRTC
                 Leave();
                 EmitError(ErrorCode.JoinMatchFailed, ex);
             }
-        }
-
-        public class MatchmakingArgs
-        {
-            public string Query = "*";
-            public int MinCount = 2;
-            public int MaxCount = 8;
-            public Dictionary<string, string> stringProperties = null;
-            public Dictionary<string, double> numericProperties = null;
-            public int? countMultiple = null;
         }
 
         public async void StartMatchmaking(ISocket nakamaSocket, MatchmakingArgs args = null)
@@ -366,12 +546,23 @@ namespace NakamaWebRTC
             MatchID = "";
             MatchmakerTicket = null;
             CreateWebRTCMultiplayer();
-            webrtcPeers = new Dictionary<string, WebRTCPeerConnection>();
-            webrtcPeersConnected = new Dictionary<string, bool>();
-            sessionIDToPlayers = new Dictionary<string, Player>();
+            webrtcPeers.Clear();
+            webrtcPeersConnected.Clear();
+            sessionIDToPlayers.Clear();
             nextPeerID = 1;
             MatchState = MatchState.Lobby;
             MatchMode = MatchMode.None;
+        }
+        #endregion
+
+        #region Helper Methods
+        private void EmitError(ErrorCode code, object extra = null)
+        {
+            string message = ErrorMessages[code];
+            if (code == ErrorCode.ClientJoinError)
+                message = JoinErrorMessages[(JoinErrorReason)extra];
+            OnError?.Invoke(message);
+            OnErrorCode?.Invoke(code, message, extra);
         }
 
         private void CreateWebRTCMultiplayer()
@@ -418,7 +609,9 @@ namespace NakamaWebRTC
                 return GetWebRTCPeer(player.SessionID);
             return null;
         }
+        #endregion
 
+        #region Nakama
         private void OnNakamaError(Exception error)
         {
             GD.Print($"{nameof(OnlineMatch)} ERROR:");
@@ -462,12 +655,12 @@ namespace NakamaWebRTC
                         // Tell this player that we've already started
                         // TODO: Maybe add feature for mid match resynchronization
                         NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
-                            JsonSerializer.Serialize(new JoinErrorPayload()
+                            new JoinErrorPayload()
                             {
                                 Target = user.SessionId,
                                 Code = JoinErrorReason.MatchHasAlreadyBegun,
                                 Reason = JoinErrorMessages[JoinErrorReason.MatchHasAlreadyBegun],
-                            }));
+                            }.Serialize());
                     }
                     else if (sessionIDToPlayers.Count < MaxPlayers)
                     {
@@ -477,23 +670,23 @@ namespace NakamaWebRTC
                         PlayerJoined?.Invoke(newPlayer);
 
                         NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinSuccess,
-                            JsonSerializer.Serialize(new JoinSuccessPayload()
+                            new JoinSuccessPayload()
                             {
-                                Players = sessionIDToPlayers,
-                                ClientVersion = ClientVersion
-                            }));
+                                Players = Players,
+                                HostClientVersion = ClientVersion
+                            }.Serialize());
 
                         WebRTCConnectPeer(newPlayer);
                     }
                     else
                     {
                         NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
-                            JsonSerializer.Serialize(new JoinErrorPayload()
+                            new JoinErrorPayload()
                             {
                                 Target = user.SessionId,
                                 Code = JoinErrorReason.MatchIsFull,
                                 Reason = JoinErrorMessages[JoinErrorReason.MatchIsFull],
-                            }));
+                            }.Serialize());
                     }
                 }
                 else if (MatchMode == MatchMode.Matchmaker)
@@ -524,7 +717,7 @@ namespace NakamaWebRTC
 
                     if (sessionIDToPlayers.Count < MinPlayers)
                     {
-                        // IF the state was previously, ready, but this brings us below the minimyum players,
+                        // IF the state was previously, ready, but this brings us below the minimum players,
                         // then we aren't ready anymore
                         if (MatchState == MatchState.Ready)
                         {
@@ -573,9 +766,7 @@ namespace NakamaWebRTC
 
             foreach (var user in data.Users)
                 sessionIDToPlayers[user.Presence.SessionId] = Player.FromPresence(user.Presence, 0);
-            var sessionIDs = new List<string>(SessionIDs);
-            sessionIDs.Sort();
-            foreach (var sessionID in sessionIDs)
+            foreach (var sessionID in SessionIDs.OrderBy(x => x))
             {
                 sessionIDToPlayers[sessionID].PeerID = nextPeerID;
                 nextPeerID++;
@@ -601,6 +792,7 @@ namespace NakamaWebRTC
             }
         }
 
+        #region Nakama Match State
         private void OnNakamaMatchState(IMatchState state)
         {
             try
@@ -608,40 +800,268 @@ namespace NakamaWebRTC
                 switch ((MatchOpCode)state.OpCode)
                 {
                     case MatchOpCode.WebRTCPeerMethod:
-                        // TODO
+                        HandleWebRTCPeerMethod(state);
                         break;
                     case MatchOpCode.JoinSuccess:
-                        var successPayload = JsonSerializer.Deserialize<JoinSuccessPayload>(Encoding.UTF8.GetString(state.State));
+                        HandleJoinSuccess(state);
                         break;
                     case MatchOpCode.JoinError:
-                        var errorPayload = JsonSerializer.Deserialize<JoinErrorPayload>(Encoding.UTF8.GetString(state.State));
+                        HandleJoinError(state);
                         break;
                 }
             }
-            catch (Exception ex) when (ex is JsonException || ex is DecoderFallbackException)
+            catch (Exception ex)
             {
+                GD.Print($"{nameof(OnlineMatch)}: Encountered error when handling Nakama Match state:\n\t{ex}");
                 return;
             }
         }
 
-        private void OnWebRTCPeerConnected(int peerID)
+        private void HandleWebRTCPeerMethod(IMatchState state)
         {
+            var payload = state.State.Deserialize<WebRTCPeerMethodPayload>();
 
+            // We're using Nakama to do RPC calls on peers to set up the WebRTC connection.
+            // Once the WebRTC connection is up, then we'll be able to use the usual
+            // Godot networking calls.
+            if (payload.Target == MySessionID)
+            {
+                string sessionID = state.UserPresence.SessionId;
+                if (!webrtcPeers.ContainsKey(sessionID))
+                    return;
+                var webrtcPeer = webrtcPeers[sessionID];
+                switch (payload.Method)
+                {
+                    case WebRTCPeerMethodPayload.MethodType.SetRemoteDescription:
+                        webrtcPeer.SetRemoteDescription(
+                            payload.GetArg<string>(0),
+                            payload.GetArg<string>(1));
+                        break;
+                    case WebRTCPeerMethodPayload.MethodType.AddIceCandidate:
+                        string name = payload.GetArg<string>(2);
+                        if (WebRTCCheckIceCandidate(name))
+                            webrtcPeer.AddIceCandidate(
+                                payload.GetArg<string>(0),
+                                payload.GetArg<int>(1),
+                                payload.GetArg<string>(2));
+                        break;
+                    case WebRTCPeerMethodPayload.MethodType.Reconnect:
+                        var player = sessionIDToPlayers[sessionID];
+                        webrtcMultiplayer.RemovePeer(player.PeerID);
+                        WebRTCReconnectPeer(player);
+                        break;
+                }
+            }
         }
 
-        private void OnWebRTCPeerDisconnected(int peerID)
+        private void HandleJoinSuccess(IMatchState state)
         {
+            if (MatchMode != MatchMode.Join)
+                return;
+
+            var payload = state.State.Deserialize<JoinSuccessPayload>();
+            if (ClientVersion != payload.HostClientVersion)
+            {
+                Leave();
+                EmitError(ErrorCode.ClientVersionError, payload.HostClientVersion);
+            }
+
+            // Add any players that we're missing from the payload of players
+            foreach (var player in payload.Players)
+            {
+                if (!sessionIDToPlayers.ContainsKey(player.SessionID))
+                {
+                    sessionIDToPlayers[player.SessionID] = player;
+                    WebRTCConnectPeer(player);
+                    PlayerJoined?.Invoke(player);
+                    if (player.SessionID == MySessionID)
+                    {
+                        webrtcMultiplayer.Initialize(player.PeerID);
+                        GetTree().NetworkPeer = webrtcMultiplayer;
+                        PlayerStatusChanged?.Invoke(player, PlayerStatus.Connected);
+                    }
+                }
+            }
+        }
+
+        private void HandleJoinError(IMatchState state)
+        {
+            var payload = state.State.Deserialize<JoinErrorPayload>();
+
+            if (payload.Target == MySessionID)
+            {
+                Leave();
+                EmitError(ErrorCode.ClientJoinError, payload.Code);
+            }
+        }
+        #endregion
+        #endregion
+
+        #region WebRTC
+        private void WebRTCConnectPeer(Player player)
+        {
+            // Don't add the same player twice
+            if (webrtcPeers.ContainsKey(player.SessionID))
+                return;
+
+            // If the match was previously ready, then we need to switch it back to not ready
+            if (MatchState == MatchState.Ready)
+                MatchNotReady?.Invoke();
+
+            // If we're already playing, then this is a reconnect attempt, so don't mess with the state
+            // Otherwise, change state to connecting becasue we're trying to connect to all peers
+            if (MatchState != MatchState.Playing)
+                MatchState = MatchState.Connecting;
+
+            var webrtcPeer = new WebRTCPeerConnection();
+            webrtcPeer.Initialize(new
+            {
+                iceServers = IceServersConfig.ToGDDict()
+            }.ToGDDict());
+
+            webrtcPeer.Connect("session_description_created", this, nameof(OnWebRTCPeerSessionDescriptionCreated), Utils.GDParams(player.SessionID));
+            webrtcPeer.Connect("ice_candidate_created", this, nameof(OnWebRTCPeerIceCandidateCreated), Utils.GDParams(player.SessionID));
+
+            webrtcPeers[player.SessionID] = webrtcPeer;
+
+            webrtcMultiplayer.AddPeer(webrtcPeer, player.PeerID, 0);
+
+            WebRTCPeerAdded?.Invoke(webrtcPeer, player);
+
+            if (MySessionID.CasecmpTo(player.SessionID) < 0)
+            {
+                var result = webrtcPeer.CreateOffer();
+                if (result != Error.Ok)
+                    EmitError(ErrorCode.WebRTCOfferError, result);
+            }
 
         }
 
         private void WebRTCDisconnectPeer(Player player)
         {
-            throw new NotImplementedException();
+            var webrtcPeer = webrtcPeers[player.SessionID];
+            WebRTCPeerRemoved?.Invoke(webrtcPeer, player);
+            webrtcPeer.Close();
+            webrtcPeers.Remove(player.SessionID);
         }
 
-        private void WebRTCConnectPeer(Player newPlayer)
+        private void WebRTCReconnectPeer(Player player)
         {
-            throw new NotImplementedException();
+            if (webrtcPeers.TryGetValue(player.SessionID, out WebRTCPeerConnection oldWebRTCPeer))
+            {
+                WebRTCPeerRemoved?.Invoke(oldWebRTCPeer, player);
+                oldWebRTCPeer.Close();
+            }
+
+            webrtcPeersConnected.Remove(player.SessionID);
+            webrtcPeers.Remove(player.SessionID);
+
+            GD.Print($"{nameof(OnlineMatch)}: Starting WebRTC reconnect...");
+
+            WebRTCConnectPeer(player);
+
+            PlayerStatusChanged?.Invoke(player, PlayerStatus.Connecting);
+
+            if (MatchState == MatchState.Ready)
+            {
+                MatchState = MatchState.Connecting;
+                MatchNotReady?.Invoke();
+            }
         }
+
+        private void OnWebRTCPeerSessionDescriptionCreated(string type, string sdp, string sessionID)
+        {
+            var webrtcPeer = webrtcPeers[sessionID];
+            webrtcPeer.SetLocalDescription(type, sdp);
+
+            // Send this data to the peer so they can call SetRemoteDescription
+            nakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.WebRTCPeerMethod,
+                new WebRTCPeerMethodPayload()
+                {
+                    Method = WebRTCPeerMethodPayload.MethodType.SetRemoteDescription,
+                    Target = sessionID,
+                    Arguments = Utils.Params(type, sdp)
+                }.Serialize());
+        }
+
+        private bool WebRTCCheckIceCandidate(string name)
+        {
+            if (UseNetworkRelay == NetworkRelay.Auto)
+                return true;
+
+            bool isRelay = name.Contains("typ relay");
+
+            // UseNetworkRelay = NetworkRelay.Forced, so we must detect the relay to verify ice candidate
+            if (UseNetworkRelay == NetworkRelay.Forced)
+                return isRelay;
+            // UseNetworkRelay = NetworkRelay.Disabled, so we only verify ice candidate if it doesn't have a relay
+            return !isRelay;
+        }
+
+        private void OnWebRTCPeerIceCandidateCreated(string media, int index, string name, string sessionID)
+        {
+            if (!WebRTCCheckIceCandidate(name))
+                return;
+
+            // Send this data to the peer so they can call .AddIceCandidate
+            nakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.WebRTCPeerMethod,
+                new WebRTCPeerMethodPayload()
+                {
+                    Method = WebRTCPeerMethodPayload.MethodType.AddIceCandidate,
+                    Target = sessionID,
+                    Arguments = Utils.Params(media, index, name)
+                }.Serialize());
+        }
+
+        private void OnWebRTCPeerConnected(int peerID)
+        {
+            foreach (var player in Players)
+            {
+                if (player.PeerID == peerID)
+                {
+                    webrtcPeersConnected[player.SessionID] = true;
+                    GD.Print($"{nameof(OnlineMatch)}: WebRTC peer connected: " + peerID);
+                    PlayerStatusChanged?.Invoke(player, PlayerStatus.Connected);
+                }
+            }
+
+            // We have a WebRTC peer for each connection to another player, so we'll have one less
+            // than the number of players (ie. no peer connection to ourselves)
+            if (webrtcPeersConnected.Count == Players.Count - 1)
+            {
+                if (Players.Count >= MinPlayers)
+                {
+                    // All our peers are good, so we can assume godot RPC will work now
+                    MatchState = MatchState.Ready;
+                    MatchReady?.Invoke(Players);
+                }
+                else
+                {
+                    MatchState = MatchState.WaitingForEnoughPlayers;
+                }
+            }
+        }
+
+        private void OnWebRTCPeerDisconnected(int peerID)
+        {
+            GD.Print($"{nameof(OnlineMatch)}: WebRTC peer disconnected: " + peerID);
+
+            foreach (var player in Players)
+            {
+                // We only intiate reconnection process from only one side (the offer side)
+                if (player.PeerID == peerID && MySessionID.CasecmpTo(player.SessionID) < 0)
+                {
+                    nakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.WebRTCPeerMethod,
+                        new WebRTCPeerMethodPayload()
+                        {
+                            Method = WebRTCPeerMethodPayload.MethodType.Reconnect,
+                            Target = player.SessionID
+                        }.Serialize());
+
+                    WebRTCReconnectPeer(player);
+                }
+            }
+        }
+        #endregion
     }
 }
