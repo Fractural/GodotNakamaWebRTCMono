@@ -1,6 +1,7 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using System;
+using GDC = Godot.Collections;
 
 namespace NakamaWebRTCDemo
 {
@@ -26,15 +27,17 @@ namespace NakamaWebRTCDemo
                     screen.Construct(this);
         }
 
-        public void ShowScreen(string name)
+        public void ShowScreen(string name, GDC.Dictionary args = null)
         {
+            if (args == null)
+                args = new GDC.Dictionary();
             var screen = screenHolder.GetNode<Screen>(name);
             if (screen == null)
                 return;
 
             if (CurrentScreen != null)
                 HideScreen();
-            screen.Show();
+            screen.ShowScreen(args);
             CurrentScreen = screen;
 
             OnScreenChanged?.Invoke(name, CurrentScreen);

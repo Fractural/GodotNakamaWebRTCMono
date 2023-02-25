@@ -4,7 +4,7 @@
     <RootNamespace>NakamaandWebRTCdemo</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="FracturalGodotCodeGenerator" Version="0.0.1-dev" />
+    <PackageReference Include="FracturalGodotCodeGenerator" Version="0.1.0-dev" />
     <PackageReference Include="NakamaClient" Version="3.6.0" />
   </ItemGroup>
 </Project>

@@ -5,14 +5,14 @@ namespace NakamaWebRTCDemo
 {
     public class Screen : Control
     {
-        protected UILayer uilayer;
+        protected UILayer uiLayer;
 
         public virtual void Construct(UILayer uilayer)
         {
-            this.uilayer = uilayer;
+            this.uiLayer = uilayer;
         }
 
-        public virtual void ShowScreen(GDC.Dictionary args = null)
+        public virtual void ShowScreen(GDC.Dictionary args)
         {
             Visible = true;
         }

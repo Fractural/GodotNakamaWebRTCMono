@@ -1,11 +1,11 @@
 [gd_scene load_steps=15 format=2]
 
 [ext_resource path="res://GDScript/main/screens/MatchScreen.gd" type="Script" id=1]
-[ext_resource path="res://GDScript/main/screens/ConnectionScreen.gd" type="Script" id=2]
+[ext_resource path="res://C#/Main/ConnectionScreen.cs" type="Script" id=2]
 [ext_resource path="res://C#/Main/TitleScreen.cs" type="Script" id=3]
 [ext_resource path="res://GDScript/main/screens/ReadyScreen.gd" type="Script" id=4]
 [ext_resource path="res://GDScript/main/Game.tscn" type="PackedScene" id=5]
-[ext_resource path="res://GDScript/main/UILayer.gd" type="Script" id=6]
+[ext_resource path="res://C#/Main/UILayer.cs" type="Script" id=6]
 [ext_resource path="res://C#/Main/Main.cs" type="Script" id=7]
 [ext_resource path="res://assets/fonts/monogram.tres" type="DynamicFont" id=8]
 [ext_resource path="res://GDScript/main/screens/PeerStatus.tscn" type="PackedScene" id=9]
@@ -31,6 +31,9 @@ UILayerPath = NodePath("UILayer")
 [node name="UILayer" type="CanvasLayer" parent="."]
 pause_mode = 2
 script = ExtResource( 6 )
+ScreenHolderPath = NodePath("Screens")
+MessageLabelPath = NodePath("Overlay/Message")
+BackButtonPath = NodePath("Overlay/BackButton")
 
 [node name="Screens" type="Control" parent="UILayer"]
 anchor_right = 1.0
@@ -95,6 +98,16 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 theme = ExtResource( 10 )
 script = ExtResource( 2 )
+LoginEmailFieldPath = NodePath("TabContainer/Login/GridContainer/Email")
+LoginPasswordFieldPath = NodePath("TabContainer/Login/GridContainer/Password")
+CreateAccountUsernameFieldPath = NodePath("TabContainer/Create Account/GridContainer/Username")
+CreateAccountEmailFieldPath = NodePath("TabContainer/Create Account/GridContainer/Email")
+CreateAccountPasswordFieldPath = NodePath("TabContainer/Create Account/GridContainer/Password")
+CreateAccountButtonPath = NodePath("TabContainer/Create Account/CreateAccountButton")
+LoginButtonPath = NodePath("TabContainer/Login/LoginButton")
+SaveCredentialsCheckBoxPath = NodePath("TabContainer/Login/GridContainer/SaveCheckBox")
+CreateAccountSaveCredentialsCheckBoxPath = NodePath("TabContainer/Create Account/GridContainer/SaveCheckBox")
+TabContainerPath = NodePath("TabContainer")
 
 [node name="TabContainer" type="TabContainer" parent="UILayer/Screens/ConnectionScreen"]
 anchor_right = 1.0
@@ -103,9 +116,6 @@ margin_left = 100.0
 margin_top = 100.0
 margin_right = -100.0
 margin_bottom = -100.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Login" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer"]
 anchor_right = 1.0
@@ -125,9 +135,6 @@ margin_top = -121.0
 margin_right = 366.0
 margin_bottom = 59.0
 columns = 2
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="EmailLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
 margin_top = 5.0
@@ -187,9 +194,6 @@ margin_top = -100.0
 margin_right = -300.0
 margin_bottom = -50.0
 text = "Login"
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Create Account" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer"]
 visible = false

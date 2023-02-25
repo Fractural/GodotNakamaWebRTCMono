@@ -1,69 +1,97 @@
 using Godot;
 using System;
 using Nakama;
+using System.Threading.Tasks;
+using Fractural.GodotCodeGenerator.Attributes;
 
-public class Online : Node
+namespace NakamaWebRTCDemo
 {
-    [Export]
-    public string NakamaServerKey = "defaultkey";
-    [Export]
-    public string NakamaHost = "localhost";
-    [Export]
-    public int NakamaPort = 7350;
-    [Export]
-    public string NakamaScheme = "http";
 
-    private Client nakamaClient;
-    public Client NakamaClient
+    public partial class Online : Node
     {
-        get
+        public static Online Global { get; private set; }
+
+        [Export]
+        public string NakamaServerKey = "defaultkey";
+        [Export]
+        public string NakamaHost = "localhost";
+        [Export]
+        public int NakamaPort = 7350;
+        [Export]
+        public string NakamaScheme = "http";
+
+        private Client nakamaClient;
+        public Client NakamaClient
         {
-            if (nakamaClient == null)
+            get
             {
-                nakamaClient = new Client(
-                    scheme: NakamaScheme,
-                    host: NakamaHost,
-                    port: NakamaPort,
-                    serverKey: NakamaServerKey
-                );
+                if (nakamaClient == null)
+                {
+                    nakamaClient = new Client(
+                        scheme: NakamaScheme,
+                        host: NakamaHost,
+                        port: NakamaPort,
+                        serverKey: NakamaServerKey
+                    );
+                }
+                return nakamaClient;
             }
-            return nakamaClient;
         }
-    }
 
-    public delegate void SessionChangedDelegate(ISession session);
-    public delegate void SessionConnectedDelegate(ISession session);
-    public delegate void SocketConnectedDelegate(ISocket socket);
+        [Awaitable]
+        public event Action<ISession> SessionChanged;
+        [Awaitable]
+        public event Action<ISession> SessionConnected;
+        [Awaitable]
+        public event Action<ISocket> SocketConnected;
 
-    public event SessionChangedDelegate SessionChanged;
-    public event SessionConnectedDelegate SessionConnected;
-    public event SocketConnectedDelegate SocketConnected;
+        private ISession nakamaSession;
+        public ISession NakamaSession
+        {
+            get => nakamaSession; set
+            {
+                NakamaSession = value;
 
-    public ISession NakamaSession { get; private set; }
-    public ISocket NakamaSocket { get; private set; }
+                SessionChanged?.Invoke(value);
 
-    private bool nakamaSocketConnecting = false;
+                if (NakamaSession != null)
+                    SessionConnected?.Invoke(value);
+            }
+        }
+        public ISocket NakamaSocket { get; private set; }
 
-    public bool IsNakamaSocketConnected => NakamaSocket != null && NakamaSocket.IsConnected;
+        private bool nakamaSocketConnecting = false;
 
-    public void SetNakamaSession(ISession session)
-    {
-        NakamaSession = session;
+        public bool IsNakamaSocketConnected => NakamaSocket != null && NakamaSocket.IsConnected;
 
-        SessionChanged?.Invoke(session);
+        public override void _Ready()
+        {
+            if (Global == null)
+            {
+                QueueFree();
+                return;
+            }
+            Global = this;
+        }
 
-        if (NakamaSession != null)
-            SessionConnected?.Invoke(session);
-    }
+        public override void _Notification(int what)
+        {
+            if (what == NotificationPredelete)
+            {
+                if (Global == this)
+                    Global = null;
+            }
+        }
 
-    public async void ConnectNakamaSocket()
-    {
-        if (NakamaSocket != null) return;
-        if (nakamaSocketConnecting) return;
-        nakamaSocketConnecting = true;
-        NakamaSocket = Socket.From(NakamaClient);
-        await NakamaSocket.ConnectAsync(NakamaSession);
-        nakamaSocketConnecting = false;
-        SocketConnected?.Invoke(NakamaSocket);
+        public async void ConnectNakamaSocket()
+        {
+            if (NakamaSocket != null) return;
+            if (nakamaSocketConnecting) return;
+            nakamaSocketConnecting = true;
+            NakamaSocket = Socket.From(NakamaClient);
+            await NakamaSocket.ConnectAsync(NakamaSession);
+            nakamaSocketConnecting = false;
+            SocketConnected?.Invoke(NakamaSocket);
+        }
     }
 }
