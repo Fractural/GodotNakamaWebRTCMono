@@ -6,6 +6,7 @@ using GDC = Godot.Collections;
 using System.Diagnostics;
 using System.Text;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NakamaWebRTC
 {
@@ -454,7 +455,7 @@ namespace NakamaWebRTC
 
         public async void CreateMatch(ISocket nakamaSocket)
         {
-            Leave();
+            await Leave();
             NakamaSocket = nakamaSocket;
 
             try
@@ -464,7 +465,7 @@ namespace NakamaWebRTC
             }
             catch (ApiResponseException ex)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.MatchCreateFailed, ex);
                 // TODO: Maybe remove emit error altogether if error is already handled by the exception itself
             }
@@ -472,7 +473,7 @@ namespace NakamaWebRTC
 
         public async void JoinMatch(ISocket nakamaSocket, string matchID)
         {
-            Leave();
+            await Leave();
             NakamaSocket = nakamaSocket;
             MatchMode = MatchMode.Join;
 
@@ -483,14 +484,14 @@ namespace NakamaWebRTC
             }
             catch (ApiResponseException ex)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.JoinMatchFailed, ex);
             }
         }
 
         public async void StartMatchmaking(ISocket nakamaSocket, MatchmakingArgs args = null)
         {
-            Leave();
+            await Leave();
             NakamaSocket = nakamaSocket;
             MatchMode = MatchMode.Matchmaker;
             if (args == null)
@@ -517,7 +518,7 @@ namespace NakamaWebRTC
             }
             catch (ApiResponseException ex)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.StartMatchmakingFailed, ex);
             }
         }
@@ -528,7 +529,7 @@ namespace NakamaWebRTC
             MatchState = MatchState.Playing;
         }
 
-        public async void Leave(bool closeSocket = false)
+        public async Task Leave(bool closeSocket = false)
         {
             if (webrtcMultiplayer != null)
             {
@@ -619,17 +620,17 @@ namespace NakamaWebRTC
         #endregion
 
         #region Nakama
-        private void OnNakamaError(Exception error)
+        private async void OnNakamaError(Exception error)
         {
             GD.Print($"{nameof(OnlineMatch)} ERROR:");
             GD.Print(error);
-            Leave();
+            await Leave();
             EmitError(ErrorCode.WebsocketConnectionError, error);
         }
 
-        private void OnNakamaClosed()
+        private async void OnNakamaClosed()
         {
-            Leave();
+            await Leave();
             Disconnected?.Invoke();
         }
 
@@ -649,7 +650,7 @@ namespace NakamaWebRTC
             PlayerStatusChanged?.Invoke(myPlayer, PlayerStatus.Connected);
         }
 
-        private void OnNakamaMatchPresence(IMatchPresenceEvent presence)
+        private async void OnNakamaMatchPresence(IMatchPresenceEvent presence)
         {
             // Handle joining
             foreach (var user in presence.Joins)
@@ -661,7 +662,7 @@ namespace NakamaWebRTC
                     {
                         // Tell this player that we've already started
                         // TODO: Maybe add feature for mid match resynchronization
-                        NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
+                        await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
                             new JoinErrorPayload()
                             {
                                 Target = user.SessionId,
@@ -676,7 +677,7 @@ namespace NakamaWebRTC
                         sessionIDToPlayers[user.SessionId] = newPlayer;
                         PlayerJoined?.Invoke(newPlayer);
 
-                        NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinSuccess,
+                        await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinSuccess,
                             new JoinSuccessPayload()
                             {
                                 Players = Players,
@@ -687,7 +688,7 @@ namespace NakamaWebRTC
                     }
                     else
                     {
-                        NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
+                        await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
                             new JoinErrorPayload()
                             {
                                 Target = user.SessionId,
@@ -714,7 +715,7 @@ namespace NakamaWebRTC
                 // If the host disconnects, this is the end!
                 if (player.PeerID == 1)
                 {
-                    Leave();
+                    await Leave();
                     EmitError(ErrorCode.HostDisconnected);
                 }
                 else
@@ -794,7 +795,7 @@ namespace NakamaWebRTC
             }
             catch (ApiResponseException ex)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.JoinMatchFailed, ex);
             }
         }
@@ -861,7 +862,7 @@ namespace NakamaWebRTC
             }
         }
 
-        private void HandleJoinSuccess(IMatchState state)
+        private async void HandleJoinSuccess(IMatchState state)
         {
             if (MatchMode != MatchMode.Join)
                 return;
@@ -869,7 +870,7 @@ namespace NakamaWebRTC
             var payload = state.State.Deserialize<JoinSuccessPayload>();
             if (ClientVersion != payload.HostClientVersion)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.ClientVersionError, payload.HostClientVersion);
             }
 
@@ -891,13 +892,13 @@ namespace NakamaWebRTC
             }
         }
 
-        private void HandleJoinError(IMatchState state)
+        private async void HandleJoinError(IMatchState state)
         {
             var payload = state.State.Deserialize<JoinErrorPayload>();
 
             if (payload.Target == MySessionID)
             {
-                Leave();
+                await Leave();
                 EmitError(ErrorCode.ClientJoinError, payload.Code);
             }
         }

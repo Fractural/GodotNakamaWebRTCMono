@@ -1,6 +1,8 @@
 using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using NakamaWebRTC;
+using System;
+using System.Collections.Generic;
 using GDC = Godot.Collections;
 
 namespace NakamaWebRTCDemo
@@ -17,6 +19,8 @@ namespace NakamaWebRTCDemo
         private Button createButton;
         [OnReadyGet]
         private Button joinButton;
+        [OnReadyGet]
+        private Button pasteButton;
 
         [OnReady]
         public void RealReady()
@@ -24,10 +28,29 @@ namespace NakamaWebRTCDemo
             matchButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Matchmaker));
             createButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Create));
             joinButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Join));
+            pasteButton.Connect("pressed", this, nameof(OnPasteButtonPressed));
 
             OnlineMatch.Global.MatchmakerMatched += OnMatchmakerMatched;
             OnlineMatch.Global.MatchCreated += OnMatchCreated;
             OnlineMatch.Global.MatchJoined += OnMatchJoined;
+        }
+
+        public override void _Notification(int what)
+        {
+            if (what == NotificationPredelete)
+            {
+                OnlineMatch.Global.MatchmakerMatched -= OnMatchmakerMatched;
+                OnlineMatch.Global.MatchCreated -= OnMatchCreated;
+                OnlineMatch.Global.MatchJoined -= OnMatchJoined;
+            }
+        }
+
+        public override void ShowScreen(object args)
+        {
+            base.ShowScreen(args);
+
+            matchmakerPlayerCountSpinbox.Value = 2;
+            joinMatchIDControl.Text = "";
         }
 
         private async void OnMatchButtonPressed(MatchMode mode)
@@ -41,36 +64,100 @@ namespace NakamaWebRTCDemo
                     reconnect = true,
                 }.ToGDDict());
 
-                await Online.Global.SessionConnected_Raised();
+                await Online.Global.SessionConnectedRaised();
 
                 if (Online.Global.NakamaSession == null)
                     return;
             }
 
-            // TODO NOW: FInish this
+            // Connect socket to realtime Nakama APPI if not connected
+            if (!Online.Global.IsNakamaSocketConnected)
+            {
+                Online.Global.ConnectNakamaSocket();
+                await Online.Global.SocketConnectedRaised();
+            }
+
+            uiLayer.HideMessage();
+
+            switch (mode)
+            {
+                case MatchMode.Matchmaker:
+                    StartMatchmaking();
+                    break;
+                case MatchMode.Create:
+                    CreateMatch();
+                    break;
+                case MatchMode.Join:
+                    JoinMatch();
+                    break;
+            }
         }
 
-        public override void ShowScreen(object args)
+        private void StartMatchmaking()
         {
-            base.ShowScreen(args);
+            int minPlayers = (int)matchmakerPlayerCountSpinbox.Value;
 
-            matchmakerPlayerCountSpinbox.Value = 2;
-            joinMatchIDControl.Text = "";
+            uiLayer.HideScreen();
+            uiLayer.ShowMessage("Looking or a match...");
+
+            OnlineMatch.Global.StartMatchmaking(Online.Global.NakamaSocket, new MatchmakingArgs()
+            {
+                MinCount = minPlayers,
+                stringProperties = new Dictionary<string, string>()
+                {
+                    ["game"] = "test_game"
+                },
+                Query = "+properties.game:test_game"
+            });
         }
 
-        private void OnMatchJoined(string obj)
+        private void OnMatchmakerMatched(IReadOnlyCollection<Player> players)
         {
-            throw new System.NotImplementedException();
+            uiLayer.HideMessage();
+            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
+            {
+                Players = players
+            });
         }
 
-        private void OnMatchCreated(string obj)
+        private void CreateMatch()
         {
-            throw new System.NotImplementedException();
+            OnlineMatch.Global.CreateMatch(Online.Global.NakamaSocket);
         }
 
-        private void OnMatchmakerMatched(System.Collections.Generic.IReadOnlyCollection<Player> obj)
+        private void OnMatchCreated(string matchID)
         {
-            throw new System.NotImplementedException();
+            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
+            {
+                MatchID = matchID
+            });
+        }
+
+        private void JoinMatch()
+        {
+            string matchID = joinMatchIDControl.Text.StripEdges();
+            if (matchID == "")
+            {
+                uiLayer.ShowMessage("Need to paste Match ID to join");
+                return;
+            }
+            if (!matchID.EndsWith("."))
+                matchID += ".";
+
+            OnlineMatch.Global.JoinMatch(Online.Global.NakamaSocket, matchID);
+        }
+
+        private void OnMatchJoined(string matchID)
+        {
+            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
+            {
+                MatchID = matchID
+            });
+        }
+
+        private void OnPasteButtonPressed()
+        {
+            joinMatchIDControl.Text = OS.Clipboard;
         }
     }
 }
