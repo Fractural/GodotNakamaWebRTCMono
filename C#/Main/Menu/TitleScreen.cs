@@ -6,9 +6,8 @@ namespace NakamaWebRTCDemo
 {
     public partial class TitleScreen : Screen
     {
-        public event Action LocalPlaySelected;
-        public event Action OnlinePlaySelected;
-
+        [OnReadyGet]
+        private LocalGame localGame;
         [OnReadyGet]
         private Button localButton;
         [OnReadyGet]
@@ -21,8 +20,8 @@ namespace NakamaWebRTCDemo
             onlineButton.Connect("pressed", this, nameof(OnOnlineButtonPressed));
         }
 
-        private void OnOnlineButtonPressed() => OnlinePlaySelected?.Invoke();
+        private void OnOnlineButtonPressed() => uiLayer.ShowScreen(nameof(ConnectionScreen));
 
-        private void OnLocalButtonPressed() => LocalPlaySelected?.Invoke();
+        private void OnLocalButtonPressed() => localGame.LoadAndStartGame();
     }
 }

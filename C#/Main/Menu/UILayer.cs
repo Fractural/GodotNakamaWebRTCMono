@@ -14,7 +14,14 @@ namespace NakamaWebRTCDemo
         private Label messageLabel;
         [OnReadyGet]
         private Button backButton;
+        [OnReadyGet]
+        private ColorRect tint;
 
+        // Makes the back button run a specific function instead.
+        //
+        // Useful for when the uilayer is hidden and you want the
+        // back button to go back to a specific menu.
+        public Action BackButtonActionOverride { get; set; }
         public Screen CurrentScreen { get; private set; }
 
         public event Action<string, Node> ScreenChanged;
@@ -28,6 +35,7 @@ namespace NakamaWebRTCDemo
 
             backButton.Connect("pressed", this, nameof(OnBackButonPressed));
 
+            HideMessage();
             ShowScreen(nameof(TitleScreen));
         }
 
@@ -42,6 +50,11 @@ namespace NakamaWebRTCDemo
             CurrentScreen = screen;
 
             ScreenChanged?.Invoke(screen.Name, CurrentScreen);
+
+            if (CurrentScreen.ParentScreen == null)
+                HideBackButton();
+            else
+                ShowBackButton();
         }
 
         public void ShowScreen(string name, object args = null)
@@ -60,15 +73,37 @@ namespace NakamaWebRTCDemo
             CurrentScreen = null;
         }
 
-        public void ShowMessage(string text)
+        int messageIdx = -1;
+
+        public async void ShowMessage(string text, float duration = -1)
         {
             messageLabel.Text = text;
             messageLabel.Visible = true;
+            tint.Visible = true;
+            messageIdx++;
+            int currMessageIdx = messageIdx;
+            // NOTE: If we have more than 100 messages running simulatenously,
+            //       this could break, since the values loop back
+            // TODO: Replace this with GDTask solution that has cancellation tokens
+            if (messageIdx >= 100)
+            {
+                messageIdx = 0;
+            }
+
+            if (duration > 0)
+            {
+                await ToSignal(GetTree().CreateTimer(duration), "timeout");
+                // We got interrupted! We don't want to hide the message anymore.
+                if (messageIdx != currMessageIdx)
+                    return;
+                HideMessage();
+            }
         }
 
         public void HideMessage()
         {
             messageLabel.Visible = false;
+            tint.Visible = false;
         }
 
         public void ShowBackButton()
@@ -90,7 +125,13 @@ namespace NakamaWebRTCDemo
 
         private void OnBackButonPressed()
         {
-            ShowScreen(CurrentScreen.ParentScreen);
+            if (BackButtonActionOverride != null)
+            {
+                BackButtonActionOverride();
+                BackButtonActionOverride = null;
+            }
+            else
+                ShowScreen(CurrentScreen.ParentScreen);
         }
     }
 }

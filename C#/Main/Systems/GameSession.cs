@@ -71,25 +71,32 @@ namespace NakamaWebRTCDemo
             GameSessionPlayers.RemoveAll(x => x.Player == player);
         }
 
-
         private void StartGame()
         {
+            uiLayer.HideAll();
+            uiLayer.ShowBackButton();
+            uiLayer.BackButtonActionOverride = StopSession;
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
             // we can still continue with the remaining 
             game.LoadAndStartGame(GameSessionPlayers.Select(x => x.Player).ToList());
         }
 
-        private void StopGame()
+        private async void StopSession()
         {
-            if (GameState.Global.OnlinePlay)
-                OnlineMatch.Global.Leave();
             game.StopGame();
+            if (GameState.Global.OnlinePlay)
+            {
+                await OnlineMatch.Global.Leave();
+                uiLayer.ShowScreen(nameof(MatchScreen));
+            }
+            else
+                uiLayer.ShowScreen(nameof(TitleScreen));
         }
 
         private void RestartGame()
         {
-            StopGame();
+            game.StopGame();
             StartGame();
         }
 
@@ -131,7 +138,7 @@ namespace NakamaWebRTCDemo
             if (isMatchOver)
                 uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins the whole match!");
             else
-                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + "wins this round!");
+                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins this round!");
 
             await ToSignal(GetTree().CreateTimer(2.0f), "timeout");
 
@@ -142,10 +149,7 @@ namespace NakamaWebRTCDemo
             if (GameState.Global.OnlinePlay)
             {
                 if (isMatchOver)
-                {
-                    StopGame();
-                    uiLayer.ShowScreen(nameof(MatchScreen));
-                }
+                    StopSession();
                 else
                 {
                     // We must synchronize our winning session player to that of the server's
@@ -157,6 +161,10 @@ namespace NakamaWebRTCDemo
                         GameSessionPlayers = GameSessionPlayers
                     });
                 }
+            }
+            else
+            {
+                RestartGame();
             }
         }
     }

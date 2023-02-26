@@ -23,9 +23,12 @@ namespace NakamaWebRTCDemo
                 return;
             CanUse = false;
 
-            Rpc(nameof(ShowFx));
+            if (GameState.Global.OnlinePlay)
+                Rpc(nameof(ShowFx));
+            else
+                ShowFx();
             await ToSignal(GetTree().CreateTimer(ChargeDuration), "timeout");
-            foreach (PhysicsBody2D body in GetOverlappingBodies())
+            foreach (Node body in GetOverlappingBodies())
                 if (body is GamePlayer player && player != owner && !player.IsDead)
                     player.Kill();
             await ToSignal(GetTree().CreateTimer(Cooldown), "timeout");

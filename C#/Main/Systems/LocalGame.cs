@@ -15,12 +15,15 @@ namespace NakamaWebRTCDemo
     {
         [OnReadyGet]
         private GameSession gameSession;
+        [OnReadyGet]
+        private UILayer uiLayer;
 
         /// <summary>
         /// Starts a local game.
         /// </summary>
         public void LoadAndStartGame()
         {
+            GameState.Global.OnlinePlay = false;
             var players = new List<Player>()
             {
                 Player.FromLocal("Player1", 1),

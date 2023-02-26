@@ -6,7 +6,6 @@ using Fractural.GodotCodeGenerator.Attributes;
 
 namespace NakamaWebRTCDemo
 {
-
     public partial class Online : Node
     {
         public static Online Global { get; private set; }
@@ -21,7 +20,7 @@ namespace NakamaWebRTCDemo
         public string NakamaScheme = "http";
 
         private Client nakamaClient;
-        public Client NakamaClient
+        private Client NakamaClient
         {
             get
             {
@@ -44,17 +43,18 @@ namespace NakamaWebRTCDemo
         public event Action<ISession> SessionConnected;
         [Awaitable]
         public event Action<ISocket> SocketConnected;
+        public event Action<Exception> NakamaConnectionError;
 
         private ISession nakamaSession;
         public ISession NakamaSession
         {
             get => nakamaSession; set
             {
-                NakamaSession = value;
+                nakamaSession = value;
 
                 SessionChanged?.Invoke(value);
 
-                if (NakamaSession != null)
+                if (nakamaSession != null)
                     SessionConnected?.Invoke(value);
             }
         }
@@ -66,7 +66,7 @@ namespace NakamaWebRTCDemo
 
         public override void _Ready()
         {
-            if (Global == null)
+            if (Global != null)
             {
                 QueueFree();
                 return;
@@ -85,13 +85,41 @@ namespace NakamaWebRTCDemo
 
         public async void ConnectNakamaSocket()
         {
-            if (NakamaSocket != null) return;
-            if (nakamaSocketConnecting) return;
-            nakamaSocketConnecting = true;
-            NakamaSocket = Socket.From(NakamaClient);
-            await NakamaSocket.ConnectAsync(NakamaSession);
-            nakamaSocketConnecting = false;
-            SocketConnected?.Invoke(NakamaSocket);
+            try
+            {
+                if (NakamaSocket != null) return;
+                if (nakamaSocketConnecting) return;
+                nakamaSocketConnecting = true;
+                NakamaSocket = Socket.From(NakamaClient);
+                await NakamaSocket.ConnectAsync(NakamaSession);
+                nakamaSocketConnecting = false;
+                SocketConnected?.Invoke(NakamaSocket);
+            }
+            catch (Exception e)
+            {
+                NakamaConnectionError.Invoke(e);
+            }
+        }
+
+        /// <summary>
+        /// Use this for all your nakama calls.
+        /// This handles the case when the whole nakama server is down, where we won't event get
+        /// an ApiResponseException back. When this happens, NakamConnectionError is invoked.
+        /// </summary>
+        /// <param name="asyncFunc"></param>
+        /// <returns></returns>
+        public async Task CallNakama(Func<Client, Task> asyncFunc)
+        {
+            try
+            {
+                await asyncFunc(nakamaClient);
+            }
+            catch (Exception e) when (!(e is ApiResponseException))
+            {
+                // We catch any exception that is not an APIResponseException
+                // APIResponseException is normal behaviour
+                NakamaConnectionError.Invoke(e);
+            }
         }
     }
 }

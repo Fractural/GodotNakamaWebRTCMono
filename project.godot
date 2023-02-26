@@ -111,6 +111,7 @@ _global_script_class_icons={
 [application]
 
 config/name="GodotNakamaWebRTCMono"
+run/main_scene="res://C#/Main/C#Main.tscn"
 config/icon="res://icon.png"
 
 [autoload]
@@ -304,7 +305,7 @@ project/assembly_name="Nakama and WebRTC demo"
 
 [physics]
 
-2d/default_gravity=3000
+2d/default_gravity=0
 
 [rendering]
 

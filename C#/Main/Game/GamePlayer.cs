@@ -30,7 +30,8 @@ namespace NakamaWebRTCDemo
         {
             Player = player;
             // Note that SetNetworkMaster is recursive by default
-            SetNetworkMaster(player.PeerID);
+            if (GameState.Global.OnlinePlay)
+                SetNetworkMaster(player.PeerID);
             usernameLabel.Text = player.Username;
         }
 
@@ -38,6 +39,7 @@ namespace NakamaWebRTCDemo
         {
             IsDead = true;
             Death?.Invoke();
+            QueueFree();
         }
     }
 }

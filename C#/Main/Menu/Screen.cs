@@ -7,7 +7,7 @@ namespace NakamaWebRTCDemo
 {
     public partial class Screen : Control
     {
-        [OnReadyGet]
+        [OnReadyGet(OrNull = true)]
         public Screen ParentScreen { get; protected set; }
 
         protected UILayer uiLayer;

@@ -38,6 +38,7 @@ namespace NakamaWebRTCDemo
 
         public void LoadAndStartGame()
         {
+            GameState.Global.OnlinePlay = true;
             Players = new List<Player>(OnlineMatch.Global.Players);
 
             gameSession.LoadAndStartSession(Players);

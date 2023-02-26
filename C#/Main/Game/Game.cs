@@ -15,7 +15,6 @@ namespace NakamaWebRTCDemo
         [Export]
         private PackedScene mapPrefab;
 
-        [OnReadyGet]
         private Node2D map;
         [OnReadyGet]
         private Node2D playerContainer;
@@ -54,7 +53,6 @@ namespace NakamaWebRTCDemo
             if (gamePlayerIndex >= 0)
             {
                 GamePlayers[gamePlayerIndex].Kill();
-                GamePlayers.RemoveAt(gamePlayerIndex);
             }
         }
 
@@ -70,14 +68,10 @@ namespace NakamaWebRTCDemo
             HasGameStarted = true;
 
             // Reset Map
-            if (map != null)
-                map.QueueFree();
             map = mapPrefab.Instance<Node2D>();
+            AddChild(map);
 
             // Respawn players
-            foreach (var player in GamePlayers)
-                player.QueueFree();
-            GamePlayers.Clear();
             foreach (var player in players)
             {
                 var gamePlayerInst = playerPrefab.Instance<GamePlayer>();
@@ -132,24 +126,27 @@ namespace NakamaWebRTCDemo
         public void StartGame()
         {
             HasGameStarted = true;
+            GetTree().Paused = false;
         }
 
         public void StopGame()
         {
             HasGameStarted = false;
-            map.QueueFree();
+            if (map != null)
+                map.QueueFree();
+            foreach (Node child in playerContainer.GetChildren())
+                child.QueueFree();
             GamePlayers.Clear();
-
-            foreach (var player in GamePlayers)
-                player.QueueFree();
         }
 
         private void OnPlayerDeath(int playerID)
         {
             PlayerDied?.Invoke(playerID);
 
+            GamePlayers.RemoveAll(x => x.Player.PeerID == playerID);
+
             // If there's only one player alive
-            if (GamePlayers.Where(x => !x.IsDead).Count() == 1)
+            if (GamePlayers.Count() == 1)
             {
                 IsGameOver = true;
                 OnGameOver?.Invoke(GamePlayers[0].Player.PeerID);

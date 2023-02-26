@@ -1,0 +1,118 @@
+[gd_scene load_steps=13 format=2]
+
+[ext_resource path="res://assets/fonts/monogram.ttf" type="DynamicFontData" id=1]
+[ext_resource path="res://godot.png" type="Texture" id=2]
+[ext_resource path="res://C#/Main/Game/GamePlayer.cs" type="Script" id=3]
+[ext_resource path="res://C#/Main/Game/KinematicBodyMovement.cs" type="Script" id=4]
+[ext_resource path="res://C#/Main/Game/LethalAttack.cs" type="Script" id=5]
+[ext_resource path="res://C#/Main/Game/PlayerInput.cs" type="Script" id=6]
+[ext_resource path="res://C#/Main/Game/GamePlayerDeathFX.cs" type="Script" id=7]
+
+[sub_resource type="RectangleShape2D" id=1]
+extents = Vector2( 31.9, 31.9 )
+
+[sub_resource type="DynamicFont" id=2]
+font_data = ExtResource( 1 )
+
+[sub_resource type="Animation" id=4]
+resource_name = "Attack"
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite:scale")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.3, 0.7 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Vector2( 1, 1 ), Vector2( 1.5, 1.5 ), Vector2( 1, 1 ) ]
+}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Sprite:modulate")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/keys = {
+"times": PoolRealArray( 0, 0.3, 0.7 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Color( 1, 1, 1, 1 ), Color( 1, 0, 0, 1 ), Color( 1, 1, 1, 1 ) ]
+}
+
+[sub_resource type="CircleShape2D" id=5]
+radius = 116.47
+
+[sub_resource type="PhysicsMaterial" id=6]
+bounce = 1.0
+
+[node name="GamePlayer" type="KinematicBody2D"]
+collision_mask = 3
+script = ExtResource( 3 )
+MovementPath = NodePath("KinematicMovement")
+AttackPath = NodePath("LethalAttack")
+InputPath = NodePath("PlayerInput")
+UsernameLabelPath = NodePath("NameRect/NameLabel")
+
+[node name="Sprite" type="Sprite" parent="."]
+texture = ExtResource( 2 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource( 1 )
+
+[node name="NameRect" type="ColorRect" parent="."]
+anchor_left = 0.5
+anchor_right = 0.5
+margin_left = -32.0
+margin_top = -45.0
+margin_right = 32.0
+margin_bottom = -32.0
+grow_horizontal = 2
+grow_vertical = 2
+rect_min_size = Vector2( 64, 0 )
+color = Color( 0, 0, 0, 0.376471 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="NameLabel" type="Label" parent="NameRect"]
+margin_right = 39.0
+margin_bottom = 13.0
+rect_min_size = Vector2( 64, 0 )
+custom_fonts/font = SubResource( 2 )
+text = "Name"
+align = 1
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+anims/Attack = SubResource( 4 )
+
+[node name="KinematicMovement" type="Node" parent="."]
+script = ExtResource( 4 )
+Speed = 25000.0
+BodyPath = NodePath("..")
+
+[node name="LethalAttack" type="Area2D" parent="."]
+script = ExtResource( 5 )
+OwnerPath = NodePath("..")
+AnimationPlayerPath = NodePath("../AnimationPlayer")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LethalAttack"]
+shape = SubResource( 5 )
+
+[node name="PlayerInput" type="Node" parent="."]
+script = ExtResource( 6 )
+PlayerPath = NodePath("..")
+
+[node name="DeathFX" type="RigidBody2D" parent="."]
+collision_layer = 4
+collision_mask = 2
+physics_material_override = SubResource( 6 )
+gravity_scale = 0.0
+linear_damp = 1.0
+script = ExtResource( 7 )
+GamePlayerPath = NodePath("..")
+PlayerSpritePath = NodePath("../Sprite")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DeathFX"]
+shape = SubResource( 1 )

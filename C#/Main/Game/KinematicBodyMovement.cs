@@ -8,8 +8,10 @@ namespace NakamaWebRTCDemo
         [OnReadyGet]
         private KinematicBody2D body;
 
+        [Export]
         public Vector2 Direction { get; set; }
-        public float Speed { get; set; }
+        [Export]
+        public float Speed { get; set; } = 10f;
 
         public override void _PhysicsProcess(float delta)
         {

@@ -4,6 +4,8 @@ using GDC = Godot.Collections;
 using System;
 using NakamaWebRTC;
 using Nakama;
+using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace NakamaWebRTCDemo
 {
@@ -16,15 +18,15 @@ namespace NakamaWebRTCDemo
         }
 
         [OnReadyGet]
-        private TextEdit loginEmailField;
+        private LineEdit loginEmailField;
         [OnReadyGet]
-        private TextEdit loginPasswordField;
+        private LineEdit loginPasswordField;
         [OnReadyGet]
-        private TextEdit createAccountUsernameField;
+        private LineEdit createAccountUsernameField;
         [OnReadyGet]
-        private TextEdit createAccountEmailField;
+        private LineEdit createAccountEmailField;
         [OnReadyGet]
-        private TextEdit createAccountPasswordField;
+        private LineEdit createAccountPasswordField;
         [OnReadyGet]
         private Button createAccountButton;
         [OnReadyGet]
@@ -39,8 +41,8 @@ namespace NakamaWebRTCDemo
         public static readonly string CredentialsFilePath = "user://credentials.json";
 
         // Saved credentials
-        private string email;
-        private string password;
+        private string email = "";
+        private string password = "";
 
         private bool reconnect;
         private string nextScreen;
@@ -86,22 +88,31 @@ namespace NakamaWebRTCDemo
                 uiLayer.ShowMessage("Logging in...");
             }
 
-            ISession nakamaSession;
-            try { nakamaSession = await Online.Global.NakamaClient.AuthenticateEmailAsync(email, password, create: false); }
-            catch (ApiResponseException ex)
+
+            await Online.Global.CallNakama(async (c) =>
             {
-                Visible = true;
-                uiLayer.ShowMessage($"Login failed {ex.StatusCode}:{ex.Message}");
+                ISession nakamaSession = null;
+                try
+                {
+                    nakamaSession = await c.AuthenticateEmailAsync(email, password, create: false);
+                }
+                catch (ApiResponseException ex)
+                {
+                    Visible = true;
+                    string statusCode = "";
 
-                // Clear fields
-                email = "";
-                password = "";
+                    uiLayer.ShowMessage($"Login failed {statusCode}:{ex.Message}");
 
-                Online.Global.NakamaSession = null;
-                return;
-            }
+                    // Clear fields
+                    email = "";
+                    password = "";
 
-            SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+                    Online.Global.NakamaSession = null;
+                    return;
+                }
+
+                SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+            });
         }
 
         private void OnLoginButtonPressed()
@@ -137,28 +148,34 @@ namespace NakamaWebRTCDemo
             Visible = false;
             uiLayer.ShowMessage("Creating account...");
 
-            ISession nakamaSession;
-            try { nakamaSession = await Online.Global.NakamaClient.AuthenticateEmailAsync(email, password, username, true); }
-            catch (ApiResponseException ex)
+            await Online.Global.CallNakama(async (c) =>
             {
-                Visible = true;
-
-                string message = ex.Message;
-                if (ex.Message == "Invalid credentials.")
+                ISession nakamaSession = null;
+                try
                 {
-                    message = "E-mail already in use.";
+                    nakamaSession = await c.AuthenticateEmailAsync(email, password, username, true);
                 }
-                else if (message == "")
+                catch (ApiResponseException ex)
                 {
-                    message = "Unable to create account.";
+                    Visible = true;
+
+                    string message = ex.Message;
+                    if (ex.Message == "Invalid credentials.")
+                    {
+                        message = "E-mail already in use.";
+                    }
+                    else if (message == "")
+                    {
+                        message = "Unable to create account.";
+                    }
+                    uiLayer.ShowMessage(message);
+
+                    Online.Global.NakamaSession = null;
+                    return;
                 }
-                uiLayer.ShowMessage(message);
 
-                Online.Global.NakamaSession = null;
-                return;
-            }
-
-            SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+                SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+            });
         }
 
         private void SetSessionAndChangeScreen(ISession session, bool saveCredentials)

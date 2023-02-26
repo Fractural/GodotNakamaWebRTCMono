@@ -20,8 +20,10 @@ namespace NakamaWebRTCDemo
         [OnReadyGet(OrNull = true)]
         private GamePlayer player;
 
+        [Export]
         public ModeEnum Mode { get; set; } = ModeEnum.Control;
-        public string InputPrefix { get; set; }
+        [Export]
+        public string InputPrefix { get; set; } = "";
 
         public void Construct(GamePlayer player)
         {

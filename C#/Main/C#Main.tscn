@@ -4,18 +4,14 @@
 [ext_resource path="res://C#/Main/Menu/LobbyScreen.tscn" type="PackedScene" id=2]
 [ext_resource path="res://C#/Main/Menu/ConnectionScreen.tscn" type="PackedScene" id=3]
 [ext_resource path="res://C#/Main/Menu/MatchScreen.tscn" type="PackedScene" id=4]
-[ext_resource path="res://GDScript/main/Game.tscn" type="PackedScene" id=5]
+[ext_resource path="res://C#/Main/Game/Game.tscn" type="PackedScene" id=5]
 [ext_resource path="res://C#/Main/Menu/UILayer.cs" type="Script" id=6]
-[ext_resource path="res://C#/Main/GameRunner.cs" type="Script" id=7]
+[ext_resource path="res://C#/Autoload/OnlineErrorHandler.cs" type="Script" id=7]
 [ext_resource path="res://C#/Main/Systems/GameSession.cs" type="Script" id=8]
 [ext_resource path="res://C#/Main/Systems/OnlineGame.cs" type="Script" id=12]
 [ext_resource path="res://C#/Main/Systems/LocalGame.cs" type="Script" id=13]
 
-[node name="MainMenu" type="Node2D"]
-script = ExtResource( 7 )
-GamePath = NodePath("Game")
-UILayerPath = NodePath("UILayer")
-TitleScreenPath = NodePath("UILayer/Screens/TitleScreen")
+[node name="MainScene" type="Node2D"]
 
 [node name="Game" parent="." instance=ExtResource( 5 )]
 
@@ -25,12 +21,14 @@ script = ExtResource( 6 )
 ScreenHolderPath = NodePath("Screens")
 MessageLabelPath = NodePath("Overlay/Message")
 BackButtonPath = NodePath("Overlay/BackButton")
+TintPath = NodePath("Overlay/Tint")
 
 [node name="Screens" type="Control" parent="UILayer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="TitleScreen" parent="UILayer/Screens" instance=ExtResource( 1 )]
+visible = true
 LocalGamePath = NodePath("../../../GameSession/LocalGame")
 
 [node name="ConnectionScreen" parent="UILayer/Screens" instance=ExtResource( 3 )]
@@ -45,13 +43,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 
-[node name="Message" type="Label" parent="UILayer/Overlay"]
-anchor_right = 1.0
-margin_top = 40.0
-margin_bottom = 48.0
-text = "Waiting for players..."
-align = 1
-
 [node name="BackButton" type="Button" parent="UILayer/Overlay"]
 anchor_left = 1.0
 anchor_right = 1.0
@@ -60,6 +51,18 @@ margin_top = 5.0
 margin_right = -5.0
 margin_bottom = 54.0
 text = "X"
+
+[node name="Tint" type="ColorRect" parent="UILayer/Overlay"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color( 0, 0, 0, 0.52549 )
+
+[node name="Message" type="Label" parent="UILayer/Overlay"]
+anchor_right = 1.0
+margin_top = 40.0
+margin_bottom = 48.0
+text = "Waiting for players..."
+align = 1
 
 [node name="GameSession" type="Node" parent="."]
 script = ExtResource( 8 )
@@ -74,7 +77,9 @@ UiLayerPath = NodePath("../../UILayer")
 [node name="LocalGame" type="Node" parent="GameSession"]
 script = ExtResource( 13 )
 GameSessionPath = NodePath("..")
+UiLayerPath = NodePath("../../UILayer")
 
-[connection signal="game_over" from="Game" to="." method="_on_Game_game_over"]
-[connection signal="game_started" from="Game" to="." method="_on_Game_game_started"]
-[connection signal="player_dead" from="Game" to="." method="_on_Game_player_dead"]
+[node name="OnlineErrorHandler" type="Node" parent="."]
+script = ExtResource( 7 )
+UiLayerPath = NodePath("../UILayer")
+GamePath = NodePath("../Game")
