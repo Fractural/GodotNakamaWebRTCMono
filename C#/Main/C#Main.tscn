@@ -1,30 +1,21 @@
-[gd_scene load_steps=15 format=2]
+[gd_scene load_steps=11 format=2]
 
-[ext_resource path="res://GDScript/main/screens/MatchScreen.gd" type="Script" id=1]
-[ext_resource path="res://C#/Main/ConnectionScreen.cs" type="Script" id=2]
-[ext_resource path="res://C#/Main/TitleScreen.cs" type="Script" id=3]
-[ext_resource path="res://GDScript/main/screens/ReadyScreen.gd" type="Script" id=4]
+[ext_resource path="res://C#/Main/Menu/TitleScreen.tscn" type="PackedScene" id=1]
+[ext_resource path="res://C#/Main/Menu/LobbyScreen.tscn" type="PackedScene" id=2]
+[ext_resource path="res://C#/Main/Menu/ConnectionScreen.tscn" type="PackedScene" id=3]
+[ext_resource path="res://C#/Main/Menu/MatchScreen.tscn" type="PackedScene" id=4]
 [ext_resource path="res://GDScript/main/Game.tscn" type="PackedScene" id=5]
-[ext_resource path="res://C#/Main/UILayer.cs" type="Script" id=6]
-[ext_resource path="res://C#/Main/Main.cs" type="Script" id=7]
-[ext_resource path="res://assets/fonts/monogram.tres" type="DynamicFont" id=8]
-[ext_resource path="res://GDScript/main/screens/PeerStatus.tscn" type="PackedScene" id=9]
-[ext_resource path="res://assets/theme.tres" type="Theme" id=10]
-[ext_resource path="res://assets/fonts/monogram.ttf" type="DynamicFontData" id=11]
-[ext_resource path="res://assets/fonts/monogram_extended.ttf" type="DynamicFontData" id=12]
+[ext_resource path="res://C#/Main/Menu/UILayer.cs" type="Script" id=6]
+[ext_resource path="res://C#/Main/GameRunner.cs" type="Script" id=7]
+[ext_resource path="res://C#/Main/Systems/GameSession.cs" type="Script" id=8]
+[ext_resource path="res://C#/Main/Systems/OnlineGame.cs" type="Script" id=12]
+[ext_resource path="res://C#/Main/Systems/LocalGame.cs" type="Script" id=13]
 
-[sub_resource type="DynamicFont" id=1]
-size = 140
-font_data = ExtResource( 12 )
-
-[sub_resource type="DynamicFont" id=2]
-size = 36
-font_data = ExtResource( 11 )
-
-[node name="Main" type="Node2D"]
+[node name="MainMenu" type="Node2D"]
 script = ExtResource( 7 )
 GamePath = NodePath("Game")
 UILayerPath = NodePath("UILayer")
+TitleScreenPath = NodePath("UILayer/Screens/TitleScreen")
 
 [node name="Game" parent="." instance=ExtResource( 5 )]
 
@@ -39,534 +30,51 @@ BackButtonPath = NodePath("Overlay/BackButton")
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="TitleScreen" type="Control" parent="UILayer/Screens"]
-visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme = ExtResource( 10 )
-script = ExtResource( 3 )
-LocalButtonPath = NodePath("HBoxContainer/LocalButton")
-OnlineButtonPath = NodePath("HBoxContainer/OnlineButton")
+[node name="TitleScreen" parent="UILayer/Screens" instance=ExtResource( 1 )]
+LocalGamePath = NodePath("../../../GameSession/LocalGame")
 
-[node name="ColorRect" type="ColorRect" parent="UILayer/Screens/TitleScreen"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-color = Color( 0, 0, 0, 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
+[node name="ConnectionScreen" parent="UILayer/Screens" instance=ExtResource( 3 )]
 
-[node name="TitleLabel" type="Label" parent="UILayer/Screens/TitleScreen"]
-anchor_right = 1.0
-margin_top = 100.0
-margin_bottom = 130.0
-custom_fonts/font = SubResource( 1 )
-text = "Nakama/WebRTC Demo"
-align = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
+[node name="MatchScreen" parent="UILayer/Screens" instance=ExtResource( 4 )]
 
-[node name="HBoxContainer" type="HBoxContainer" parent="UILayer/Screens/TitleScreen"]
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_top = -302.0
-margin_bottom = -102.0
-custom_constants/separation = 50
-alignment = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="LocalButton" type="Button" parent="UILayer/Screens/TitleScreen/HBoxContainer"]
-margin_left = 287.0
-margin_right = 487.0
-margin_bottom = 200.0
-rect_min_size = Vector2( 200, 0 )
-text = "Local"
-
-[node name="OnlineButton" type="Button" parent="UILayer/Screens/TitleScreen/HBoxContainer"]
-margin_left = 537.0
-margin_right = 737.0
-margin_bottom = 200.0
-rect_min_size = Vector2( 200, 0 )
-text = "Online"
-
-[node name="ConnectionScreen" type="Control" parent="UILayer/Screens"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme = ExtResource( 10 )
-script = ExtResource( 2 )
-LoginEmailFieldPath = NodePath("TabContainer/Login/GridContainer/Email")
-LoginPasswordFieldPath = NodePath("TabContainer/Login/GridContainer/Password")
-CreateAccountUsernameFieldPath = NodePath("TabContainer/Create Account/GridContainer/Username")
-CreateAccountEmailFieldPath = NodePath("TabContainer/Create Account/GridContainer/Email")
-CreateAccountPasswordFieldPath = NodePath("TabContainer/Create Account/GridContainer/Password")
-CreateAccountButtonPath = NodePath("TabContainer/Create Account/CreateAccountButton")
-LoginButtonPath = NodePath("TabContainer/Login/LoginButton")
-SaveCredentialsCheckBoxPath = NodePath("TabContainer/Login/GridContainer/SaveCheckBox")
-CreateAccountSaveCredentialsCheckBoxPath = NodePath("TabContainer/Create Account/GridContainer/SaveCheckBox")
-TabContainerPath = NodePath("TabContainer")
-
-[node name="TabContainer" type="TabContainer" parent="UILayer/Screens/ConnectionScreen"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 100.0
-margin_top = 100.0
-margin_right = -100.0
-margin_bottom = -100.0
-
-[node name="Login" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 4.0
-margin_top = 66.0
-margin_right = -4.0
-margin_bottom = -4.0
-
-[node name="GridContainer" type="GridContainer" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login"]
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-margin_left = -372.0
-margin_top = -121.0
-margin_right = 366.0
-margin_bottom = 59.0
-columns = 2
-
-[node name="EmailLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_top = 5.0
-margin_right = 207.0
-margin_bottom = 53.0
-custom_fonts/font = ExtResource( 8 )
-text = "E-mail:"
-
-[node name="Email" type="LineEdit" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_left = 211.0
-margin_right = 738.0
-margin_bottom = 58.0
-size_flags_horizontal = 3
-custom_fonts/font = ExtResource( 8 )
-caret_blink = true
-
-[node name="PasswordLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_top = 67.0
-margin_right = 207.0
-margin_bottom = 115.0
-custom_fonts/font = ExtResource( 8 )
-text = "Password:"
-
-[node name="Password" type="LineEdit" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_left = 211.0
-margin_top = 62.0
-margin_right = 738.0
-margin_bottom = 120.0
-size_flags_horizontal = 3
-custom_fonts/font = ExtResource( 8 )
-secret = true
-caret_blink = true
-
-[node name="Empty" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_top = 124.0
-margin_right = 207.0
-margin_bottom = 161.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="SaveCheckBox" type="CheckBox" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login/GridContainer"]
-margin_left = 211.0
-margin_top = 124.0
-margin_right = 738.0
-margin_bottom = 161.0
-custom_fonts/font = SubResource( 2 )
-pressed = true
-text = "Save email and password"
-
-[node name="LoginButton" type="Button" parent="UILayer/Screens/ConnectionScreen/TabContainer/Login"]
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 300.0
-margin_top = -100.0
-margin_right = -300.0
-margin_bottom = -50.0
-text = "Login"
-
-[node name="Create Account" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer"]
-visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 4.0
-margin_top = 66.0
-margin_right = -4.0
-margin_bottom = -4.0
-
-[node name="GridContainer" type="GridContainer" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account"]
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-margin_left = -375.0
-margin_top = -149.344
-margin_right = 375.0
-margin_bottom = 73.6561
-columns = 2
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="UsernameLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_top = 5.0
-margin_right = 207.0
-margin_bottom = 53.0
-custom_fonts/font = ExtResource( 8 )
-text = "Username:"
-
-[node name="Username" type="LineEdit" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_left = 211.0
-margin_right = 750.0
-margin_bottom = 58.0
-size_flags_horizontal = 3
-custom_fonts/font = ExtResource( 8 )
-caret_blink = true
-
-[node name="EmailLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_top = 67.0
-margin_right = 207.0
-margin_bottom = 115.0
-custom_fonts/font = ExtResource( 8 )
-text = "E-mail:"
-
-[node name="Email" type="LineEdit" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_left = 211.0
-margin_top = 62.0
-margin_right = 750.0
-margin_bottom = 120.0
-size_flags_horizontal = 3
-custom_fonts/font = ExtResource( 8 )
-caret_blink = true
-
-[node name="PasswordLabel" type="Label" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_top = 129.0
-margin_right = 207.0
-margin_bottom = 177.0
-custom_fonts/font = ExtResource( 8 )
-text = "Password:"
-
-[node name="Password" type="LineEdit" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_left = 211.0
-margin_top = 124.0
-margin_right = 750.0
-margin_bottom = 182.0
-size_flags_horizontal = 3
-custom_fonts/font = ExtResource( 8 )
-secret = true
-caret_blink = true
-
-[node name="Empty" type="Control" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_top = 186.0
-margin_right = 207.0
-margin_bottom = 223.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="SaveCheckBox" type="CheckBox" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/GridContainer"]
-margin_left = 211.0
-margin_top = 186.0
-margin_right = 750.0
-margin_bottom = 223.0
-custom_fonts/font = SubResource( 2 )
-pressed = true
-text = "Save email and password"
-
-[node name="CreateAccountButton" type="Button" parent="UILayer/Screens/ConnectionScreen/TabContainer/Create Account"]
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 253.263
-margin_top = -76.0
-margin_right = -228.737
-margin_bottom = -22.0
-text = "Create Account"
-
-[node name="MatchScreen" type="Control" parent="UILayer/Screens"]
-visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 3.0
-margin_top = -1.0
-margin_right = 3.0
-margin_bottom = -1.0
-theme = ExtResource( 10 )
-script = ExtResource( 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="PanelContainer" type="PanelContainer" parent="UILayer/Screens/MatchScreen"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 50.0
-margin_top = 50.0
-margin_right = -50.0
-margin_bottom = -50.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/Screens/MatchScreen/PanelContainer"]
-margin_left = 7.0
-margin_top = 7.0
-margin_right = 917.0
-margin_bottom = 533.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-custom_constants/separation = 10
-
-[node name="MatchPanel" type="Panel" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer"]
-margin_right = 910.0
-margin_bottom = 168.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="Label" type="Label" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/MatchPanel"]
-margin_left = 16.0
-margin_top = 50.0
-margin_right = 326.0
-margin_bottom = 98.0
-text = "Find at least"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="SpinBox" type="SpinBox" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/MatchPanel"]
-margin_left = 327.0
-margin_top = 47.0
-margin_right = 629.0
-margin_bottom = 105.0
-min_value = 2.0
-max_value = 4.0
-value = 2.0
-align = 1
-suffix = "players"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="MatchButton" type="Button" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/MatchPanel"]
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-margin_left = -187.0
-margin_top = -39.5
-margin_right = -12.0
-margin_bottom = 39.5
-text = "Match"
-__meta__ = {
-"_edit_use_anchors_": true
-}
-
-[node name="CreatePanel" type="Panel" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer"]
-margin_top = 178.0
-margin_right = 910.0
-margin_bottom = 347.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="Label" type="Label" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/CreatePanel"]
-margin_left = 17.0
-margin_top = 52.0
-margin_right = 523.0
-margin_bottom = 100.0
-text = "Create a private match"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="CreateButton" type="Button" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/CreatePanel"]
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-margin_left = -188.0
-margin_top = -42.5
-margin_right = -13.0
-margin_bottom = 36.5
-text = "Create"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="JoinPanel" type="Panel" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer"]
-margin_top = 357.0
-margin_right = 910.0
-margin_bottom = 526.0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="Label" type="Label" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/JoinPanel"]
-margin_left = 19.0
-margin_top = 52.0
-margin_right = 274.0
-margin_bottom = 100.0
-text = "Join match:"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="LineEdit" type="LineEdit" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/JoinPanel"]
-margin_left = 274.0
-margin_top = 51.0
-margin_right = 560.0
-margin_bottom = 109.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="PasteButton" type="Button" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/JoinPanel"]
-margin_left = 560.0
-margin_top = 52.0
-margin_right = 687.0
-margin_bottom = 108.0
-text = "Paste"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="JoinButton" type="Button" parent="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/JoinPanel"]
-anchor_left = 1.0
-anchor_top = 0.5
-anchor_right = 1.0
-anchor_bottom = 0.5
-margin_left = -190.0
-margin_top = -40.0
-margin_right = -15.0
-margin_bottom = 39.0
-text = "Join"
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="ReadyScreen" type="Control" parent="UILayer/Screens"]
-visible = false
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme = ExtResource( 10 )
-script = ExtResource( 4 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Panel" type="Panel" parent="UILayer/Screens/ReadyScreen"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 100.0
-margin_top = 102.0
-margin_right = -100.0
-margin_bottom = -98.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="MatchIDContainer" type="HBoxContainer" parent="UILayer/Screens/ReadyScreen/Panel"]
-anchor_right = 1.0
-margin_left = 100.0
-margin_top = 20.0
-margin_right = -100.0
-margin_bottom = 58.0
-custom_constants/separation = 0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="Label" type="Label" parent="UILayer/Screens/ReadyScreen/Panel/MatchIDContainer"]
-margin_top = 5.0
-margin_right = 207.0
-margin_bottom = 53.0
-text = "Match ID:"
-
-[node name="MatchID" type="LineEdit" parent="UILayer/Screens/ReadyScreen/Panel/MatchIDContainer"]
-margin_left = 207.0
-margin_right = 520.0
-margin_bottom = 58.0
-size_flags_horizontal = 3
-text = "XXXX-XXXX-XXXX-XXXX"
-align = 1
-editable = false
-
-[node name="MatchCopyButton" type="Button" parent="UILayer/Screens/ReadyScreen/Panel/MatchIDContainer"]
-margin_left = 520.0
-margin_right = 624.0
-margin_bottom = 58.0
-text = "Copy"
-
-[node name="StatusContainer" type="VBoxContainer" parent="UILayer/Screens/ReadyScreen/Panel"]
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-margin_left = -300.0
-margin_top = -100.0
-margin_right = 300.0
-margin_bottom = 24.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
-[node name="PeerStatus" parent="UILayer/Screens/ReadyScreen/Panel/StatusContainer" instance=ExtResource( 9 )]
-
-[node name="ReadyButton" type="Button" parent="UILayer/Screens/ReadyScreen/Panel"]
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-margin_left = 300.0
-margin_top = -100.0
-margin_right = -300.0
-margin_bottom = -50.0
-disabled = true
-text = "I'm Ready!"
-__meta__ = {
-"_edit_use_anchors_": false
-}
+[node name="LobbyScreen" parent="UILayer/Screens" instance=ExtResource( 2 )]
+OnlineGamePath = NodePath("../../../GameSession/OnlineGame")
 
 [node name="Overlay" type="Control" parent="UILayer"]
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Message" type="Label" parent="UILayer/Overlay"]
-visible = false
 anchor_right = 1.0
 margin_top = 40.0
 margin_bottom = 48.0
-custom_fonts/font = ExtResource( 8 )
 text = "Waiting for players..."
 align = 1
 
 [node name="BackButton" type="Button" parent="UILayer/Overlay"]
-visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 margin_left = -40.0
 margin_top = 5.0
 margin_right = -5.0
 margin_bottom = 54.0
-custom_fonts/font = ExtResource( 8 )
 text = "X"
-__meta__ = {
-"_edit_use_anchors_": false
-}
+
+[node name="GameSession" type="Node" parent="."]
+script = ExtResource( 8 )
+UiLayerPath = NodePath("../UILayer")
+GamePath = NodePath("../Game")
+
+[node name="OnlineGame" type="Node" parent="GameSession"]
+script = ExtResource( 12 )
+GameSessionPath = NodePath("..")
+UiLayerPath = NodePath("../../UILayer")
+
+[node name="LocalGame" type="Node" parent="GameSession"]
+script = ExtResource( 13 )
+GameSessionPath = NodePath("..")
 
 [connection signal="game_over" from="Game" to="." method="_on_Game_game_over"]
 [connection signal="game_started" from="Game" to="." method="_on_Game_game_started"]
 [connection signal="player_dead" from="Game" to="." method="_on_Game_player_dead"]
-[connection signal="pressed" from="UILayer/Screens/ConnectionScreen/TabContainer/Login/LoginButton" to="UILayer/Screens/ConnectionScreen" method="_on_LoginButton_pressed"]
-[connection signal="pressed" from="UILayer/Screens/ConnectionScreen/TabContainer/Create Account/CreateAccountButton" to="UILayer/Screens/ConnectionScreen" method="_on_CreateAccountButton_pressed"]
-[connection signal="pressed" from="UILayer/Screens/MatchScreen/PanelContainer/VBoxContainer/JoinPanel/PasteButton" to="UILayer/Screens/MatchScreen" method="_on_PasteButton_pressed"]
-[connection signal="pressed" from="UILayer/Screens/ReadyScreen/Panel/MatchIDContainer/MatchCopyButton" to="UILayer/Screens/ReadyScreen" method="_on_MatchCopyButton_pressed"]
-[connection signal="pressed" from="UILayer/Screens/ReadyScreen/Panel/ReadyButton" to="UILayer/Screens/ReadyScreen" method="_on_ReadyButton_pressed"]

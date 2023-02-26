@@ -1,6 +1,7 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using System;
+using System.Collections.Generic;
 using GDC = Godot.Collections;
 
 namespace NakamaWebRTCDemo
@@ -14,10 +15,9 @@ namespace NakamaWebRTCDemo
         [OnReadyGet]
         private Button backButton;
 
-        public Control CurrentScreen { get; private set; }
+        public Screen CurrentScreen { get; private set; }
 
-        public event Action<string, Node> OnScreenChanged;
-        public event Action OnBackButtonPressed;
+        public event Action<string, Node> ScreenChanged;
 
         [OnReady]
         public void RealReady()
@@ -25,13 +25,14 @@ namespace NakamaWebRTCDemo
             foreach (var child in screenHolder.GetChildren())
                 if (child is Screen screen)
                     screen.Construct(this);
+
+            backButton.Connect("pressed", this, nameof(OnBackButonPressed));
+
+            ShowScreen(nameof(TitleScreen));
         }
 
-        public void ShowScreen(string name, GDC.Dictionary args = null)
+        public void ShowScreen(Screen screen, object args = null)
         {
-            if (args == null)
-                args = new GDC.Dictionary();
-            var screen = screenHolder.GetNode<Screen>(name);
             if (screen == null)
                 return;
 
@@ -40,7 +41,15 @@ namespace NakamaWebRTCDemo
             screen.ShowScreen(args);
             CurrentScreen = screen;
 
-            OnScreenChanged?.Invoke(name, CurrentScreen);
+            ScreenChanged?.Invoke(screen.Name, CurrentScreen);
+        }
+
+        public void ShowScreen(string name, object args = null)
+        {
+            var newScreen = screenHolder.GetNode<Screen>(name);
+            if (newScreen == null)
+                return;
+            ShowScreen(newScreen);
         }
 
         public void HideScreen()
@@ -60,6 +69,28 @@ namespace NakamaWebRTCDemo
         public void HideMessage()
         {
             messageLabel.Visible = false;
+        }
+
+        public void ShowBackButton()
+        {
+            backButton.Visible = true;
+        }
+
+        public void HideBackButton()
+        {
+            backButton.Visible = false;
+        }
+
+        public void HideAll()
+        {
+            HideScreen();
+            HideMessage();
+            HideBackButton();
+        }
+
+        private void OnBackButonPressed()
+        {
+            ShowScreen(CurrentScreen.ParentScreen);
         }
     }
 }

@@ -9,6 +9,12 @@ namespace NakamaWebRTCDemo
 {
     public partial class ConnectionScreen : Screen
     {
+        public class Args
+        {
+            public bool? Reconnect { get; set; }
+            public string NextScreen { get; set; }
+        }
+
         [OnReadyGet]
         private TextEdit loginEmailField;
         [OnReadyGet]
@@ -47,11 +53,19 @@ namespace NakamaWebRTCDemo
             TryLoadCredentials();
         }
 
-        public override void ShowScreen(GDC.Dictionary args)
+        public override void ShowScreen(object args = null)
         {
             base.ShowScreen(args);
-            reconnect = args.Get<bool>("reconnect", false);
-            nextScreen = args.Get<string>("nextScreen", "MatchScreen");
+
+            reconnect = false;
+            nextScreen = nameof(MatchScreen);
+            if (args is Args castedArgs)
+            {
+                if (castedArgs.Reconnect.HasValue)
+                    reconnect = castedArgs.Reconnect.Value;
+                if (castedArgs.NextScreen != null)
+                    nextScreen = castedArgs.NextScreen;
+            }
 
             tabContainer.CurrentTab = 0;
 

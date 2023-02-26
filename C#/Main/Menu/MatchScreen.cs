@@ -1,4 +1,4 @@
-﻿using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using NakamaWebRTC;
 using GDC = Godot.Collections;
@@ -41,8 +41,7 @@ namespace NakamaWebRTCDemo
                     reconnect = true,
                 }.ToGDDict());
 
-
-                //await Online.Global.SessionChanged_Raised();
+                await Online.Global.SessionConnected_Raised();
 
                 if (Online.Global.NakamaSession == null)
                     return;
@@ -51,7 +50,7 @@ namespace NakamaWebRTCDemo
             // TODO NOW: FInish this
         }
 
-        public override void ShowScreen(GDC.Dictionary args)
+        public override void ShowScreen(object args)
         {
             base.ShowScreen(args);
 

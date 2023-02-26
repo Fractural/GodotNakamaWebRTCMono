@@ -84,7 +84,7 @@ namespace NakamaWebRTC
         public int? countMultiple = null;
     }
 
-    public class Player : Godot.Object, IBufferSerializable
+    public class Player : IBufferSerializable
     {
         public string SessionID { get; set; }
         public string Username { get; set; }
@@ -102,6 +102,12 @@ namespace NakamaWebRTC
         public static Player FromPresence(IUserPresence presence, int peerID)
         {
             return new Player(presence.SessionId, presence.Username, peerID);
+        }
+
+        public static Player FromLocal(string username, int peerID)
+        {
+            // We don't use sessionID if the player is local
+            return new Player("", username, peerID);
         }
 
         public void Serialize(StreamPeerBuffer buffer)
@@ -178,6 +184,7 @@ namespace NakamaWebRTC
                 }
             }
         }
+        public int MyPeerID => GetTree().NetworkPeer?.GetUniqueId() ?? -1;
         public string MySessionID { get; private set; }
         public string MatchID { get; private set; }
         public IMatchmakerTicket MatchmakerTicket { get; private set; }
@@ -1042,6 +1049,7 @@ namespace NakamaWebRTC
             }
         }
 
+        // If we loose a WebRTC connection, we try to reconnect
         private void OnWebRTCPeerDisconnected(int peerID)
         {
             GD.Print($"{nameof(OnlineMatch)}: WebRTC peer disconnected: " + peerID);

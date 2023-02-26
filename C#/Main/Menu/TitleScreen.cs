@@ -1,4 +1,4 @@
-﻿using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using System;
 

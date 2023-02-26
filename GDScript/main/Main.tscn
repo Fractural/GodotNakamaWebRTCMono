@@ -31,7 +31,7 @@ visible = false
 [node name="MatchScreen" parent="UILayer/Screens" instance=ExtResource( 8 )]
 visible = false
 
-[node name="ReadyScreen" parent="UILayer/Screens" instance=ExtResource( 5 )]
+[node name="LobbyScreen" parent="UILayer/Screens" instance=ExtResource( 5 )]
 visible = false
 
 [node name="Overlay" type="Control" parent="UILayer"]
