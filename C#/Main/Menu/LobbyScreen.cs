@@ -28,8 +28,10 @@ namespace NakamaWebRTCDemo
         private LineEdit matchIDLineEdit;
         [OnReadyGet]
         private Control lobbyPlayerContainer;
+        [OnReadyGet]
+        private Button copyMatchIDButton;
         [Export]
-        private PackedScene peerStatusPrefab;
+        private PackedScene lobbyPlayerPrefab;
 
         [OnReady]
         public void RealReady()
@@ -43,23 +45,34 @@ namespace NakamaWebRTCDemo
             OnlineMatch.Global.MatchNotReady += OnMatchNotReady;
 
             readyButton.Connect("pressed", this, nameof(OnReadyButtonPressed));
+            copyMatchIDButton.Connect("pressed", this, nameof(OnCopyMatchIDButtonPressed));
         }
 
         public override void _Notification(int what)
         {
             if (what == NotificationPredelete)
             {
-                OnlineMatch.Global.PlayerJoined -= OnPlayerJoined;
-                OnlineMatch.Global.PlayerLeft -= OnPlayerLeft;
-                OnlineMatch.Global.PlayerStatusChanged -= OnPlayerStatusChanged;
-                OnlineMatch.Global.MatchReady -= OnMatchReady;
-                OnlineMatch.Global.MatchNotReady -= OnMatchNotReady;
+                if (OnlineMatch.Global != null)
+                {
+                    OnlineMatch.Global.PlayerJoined -= OnPlayerJoined;
+                    OnlineMatch.Global.PlayerLeft -= OnPlayerLeft;
+                    OnlineMatch.Global.PlayerStatusChanged -= OnPlayerStatusChanged;
+                    OnlineMatch.Global.MatchReady -= OnMatchReady;
+                    OnlineMatch.Global.MatchNotReady -= OnMatchNotReady;
+                }
             }
         }
 
         public override void ShowScreen(object args)
         {
             base.ShowScreen(args);
+
+            // Also leave match
+            uiLayer.BackButtonActionOverride = async () =>
+            {
+                uiLayer.ShowScreen(nameof(MatchScreen));
+                await OnlineMatch.Global.Leave();
+            };
 
             IReadOnlyCollection<Player> players = new Player[0];
             string matchID = "";
@@ -116,24 +129,30 @@ namespace NakamaWebRTCDemo
             readyButton.Disabled = true;
         }
 
-        private void AddLobbyPlayer(GameSessionPlayer sessionPlayer)
+        private LobbyPlayer AddLobbyPlayer(GameSessionPlayer sessionPlayer)
         {
             if (!LobbyPlayers.Any(x => x.Player == sessionPlayer.Player))
             {
-                LobbyPlayer lobbyPlayer = peerStatusPrefab.Instance<LobbyPlayer>();
+                LobbyPlayer lobbyPlayer = lobbyPlayerPrefab.Instance<LobbyPlayer>();
                 lobbyPlayerContainer.AddChild(lobbyPlayer);
                 lobbyPlayer.Construct(sessionPlayer.Player, LobbyPlayerStatus.Waiting, sessionPlayer.Score);
+                LobbyPlayers.Add(lobbyPlayer);
+                return lobbyPlayer;
             }
+            return null;
         }
 
-        private void AddLobbyPlayer(Player player)
+        private LobbyPlayer AddLobbyPlayer(Player player)
         {
             if (!LobbyPlayers.Any(x => x.Player == player))
             {
-                LobbyPlayer lobbyPlayer = peerStatusPrefab.Instance<LobbyPlayer>();
+                LobbyPlayer lobbyPlayer = lobbyPlayerPrefab.Instance<LobbyPlayer>();
                 lobbyPlayerContainer.AddChild(lobbyPlayer);
                 lobbyPlayer.Construct(player, LobbyPlayerStatus.Connecting);
+                LobbyPlayers.Add(lobbyPlayer);
+                return lobbyPlayer;
             }
+            return null;
         }
 
         private void RemovePlayer(Player player)
@@ -189,6 +208,10 @@ namespace NakamaWebRTCDemo
             Rpc(nameof(PlayerReady), GetTree().NetworkPeer.GetUniqueId());
         }
 
+        private void OnCopyMatchIDButtonPressed()
+        {
+            OS.Clipboard = matchIDLineEdit.Text;
+        }
 
         #region OnlineMatch
         private void OnPlayerJoined(Player player) => AddLobbyPlayer(player);

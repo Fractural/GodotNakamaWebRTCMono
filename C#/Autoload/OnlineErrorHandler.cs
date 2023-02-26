@@ -1,6 +1,7 @@
 ﻿using Godot;
 using System;
 using Fractural.GodotCodeGenerator.Attributes;
+using NakamaWebRTC;
 
 namespace NakamaWebRTCDemo
 {
@@ -21,7 +22,8 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                Online.Global.NakamaConnectionError -= NakamaConnectionError;
+                if (Online.Global != null)
+                    Online.Global.NakamaConnectionError -= NakamaConnectionError;
             }
         }
 

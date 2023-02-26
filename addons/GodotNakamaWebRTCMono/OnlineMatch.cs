@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Net.WebSockets;
 
 namespace NakamaWebRTC
 {
@@ -463,7 +464,7 @@ namespace NakamaWebRTC
                 IMatch match = await nakamaSocket.CreateMatchAsync();
                 OnNakamaMatchCreated(match);
             }
-            catch (ApiResponseException ex)
+            catch (WebSocketException ex)
             {
                 await Leave();
                 EmitError(ErrorCode.MatchCreateFailed, ex);
@@ -482,7 +483,7 @@ namespace NakamaWebRTC
                 IMatch match = await NakamaSocket.JoinMatchAsync(matchID);
                 OnNakamaMatchJoined(match);
             }
-            catch (ApiResponseException ex)
+            catch (WebSocketException ex)
             {
                 await Leave();
                 EmitError(ErrorCode.JoinMatchFailed, ex);
@@ -516,7 +517,7 @@ namespace NakamaWebRTC
             {
                 MatchmakerTicket = await nakamaSocket.AddMatchmakerAsync(args.Query, args.MinCount, args.MaxCount, args.stringProperties, args.numericProperties, args.countMultiple);
             }
-            catch (ApiResponseException ex)
+            catch (WebSocketException ex)
             {
                 await Leave();
                 EmitError(ErrorCode.StartMatchmakingFailed, ex);
@@ -793,7 +794,7 @@ namespace NakamaWebRTC
                 IMatch match = await NakamaSocket.JoinMatchAsync(data);
                 OnNakamaMatchJoined(match);
             }
-            catch (ApiResponseException ex)
+            catch (WebSocketException ex)
             {
                 await Leave();
                 EmitError(ErrorCode.JoinMatchFailed, ex);

@@ -101,7 +101,7 @@ namespace NakamaWebRTCDemo
                     Visible = true;
                     string statusCode = "";
 
-                    uiLayer.ShowMessage($"Login failed {statusCode}:{ex.Message}");
+                    uiLayer.ShowMessage($"Login failed {statusCode}:{ex.Message}", 2f);
 
                     // Clear fields
                     email = "";
@@ -131,17 +131,17 @@ namespace NakamaWebRTCDemo
 
             if (email == "")
             {
-                uiLayer.ShowMessage("Must provide email");
+                uiLayer.ShowMessage("Must provide email", 2f);
                 return;
             }
             if (password == "")
             {
-                uiLayer.ShowMessage("Must provide password");
+                uiLayer.ShowMessage("Must provide password", 2f);
                 return;
             }
             if (username == "")
             {
-                uiLayer.ShowMessage("Must provide username");
+                uiLayer.ShowMessage("Must provide username", 2f);
                 return;
             }
 

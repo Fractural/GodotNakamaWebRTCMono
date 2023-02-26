@@ -37,6 +37,7 @@ LocalGamePath = NodePath("../../../GameSession/LocalGame")
 
 [node name="LobbyScreen" parent="UILayer/Screens" instance=ExtResource( 2 )]
 OnlineGamePath = NodePath("../../../GameSession/OnlineGame")
+lobbyPlayerPrefab = null
 
 [node name="Overlay" type="Control" parent="UILayer"]
 anchor_right = 1.0

@@ -62,7 +62,7 @@ namespace NakamaWebRTCDemo
             var newScreen = screenHolder.GetNode<Screen>(name);
             if (newScreen == null)
                 return;
-            ShowScreen(newScreen);
+            ShowScreen(newScreen, args);
         }
 
         public void HideScreen()

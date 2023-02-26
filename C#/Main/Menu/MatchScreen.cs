@@ -39,9 +39,12 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                OnlineMatch.Global.MatchmakerMatched -= OnMatchmakerMatched;
-                OnlineMatch.Global.MatchCreated -= OnMatchCreated;
-                OnlineMatch.Global.MatchJoined -= OnMatchJoined;
+                if (OnlineMatch.Global != null) 
+                {
+                    OnlineMatch.Global.MatchmakerMatched -= OnMatchmakerMatched;
+                    OnlineMatch.Global.MatchCreated -= OnMatchCreated;
+                    OnlineMatch.Global.MatchJoined -= OnMatchJoined;
+                }
             }
         }
 
@@ -138,7 +141,7 @@ namespace NakamaWebRTCDemo
             string matchID = joinMatchIDControl.Text.StripEdges();
             if (matchID == "")
             {
-                uiLayer.ShowMessage("Need to paste Match ID to join");
+                uiLayer.ShowMessage("Need to paste Match ID to join", 2f);
                 return;
             }
             if (!matchID.EndsWith("."))

@@ -45,9 +45,12 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                game.OnGameStarted -= OnGameStarted;
-                game.OnGameOver -= OnGameOver;
-                game.PlayerDied -= OnPlayerDead;
+                if (game != null) 
+                {
+                    game.OnGameStarted -= OnGameStarted;
+                    game.OnGameOver -= OnGameOver;
+                    game.PlayerDied -= OnPlayerDead;
+                }
             }
         }
 

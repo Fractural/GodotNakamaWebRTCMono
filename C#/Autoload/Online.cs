@@ -85,20 +85,17 @@ namespace NakamaWebRTCDemo
 
         public async void ConnectNakamaSocket()
         {
-            try
+            await CallNakama(async (client) =>
             {
                 if (NakamaSocket != null) return;
                 if (nakamaSocketConnecting) return;
                 nakamaSocketConnecting = true;
-                NakamaSocket = Socket.From(NakamaClient);
+
+                NakamaSocket = Socket.From(client, new WebSocketStdlibAdapter());
                 await NakamaSocket.ConnectAsync(NakamaSession);
                 nakamaSocketConnecting = false;
                 SocketConnected?.Invoke(NakamaSocket);
-            }
-            catch (Exception e)
-            {
-                NakamaConnectionError.Invoke(e);
-            }
+            });
         }
 
         /// <summary>
@@ -112,10 +109,11 @@ namespace NakamaWebRTCDemo
         {
             try
             {
-                await asyncFunc(nakamaClient);
+                await asyncFunc(NakamaClient);
             }
             catch (Exception e) when (!(e is ApiResponseException))
             {
+                GD.Print($"{nameof(Online)}: Encountered Exception: {e}");
                 // We catch any exception that is not an APIResponseException
                 // APIResponseException is normal behaviour
                 NakamaConnectionError.Invoke(e);

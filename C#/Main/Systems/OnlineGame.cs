@@ -30,9 +30,12 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                OnlineMatch.Global.OnError -= OnOnlineMatchError;
-                OnlineMatch.Global.Disconnected -= OnOnlineMatchDisconnected;
-                OnlineMatch.Global.PlayerLeft -= OnOnlineMatchPlayerLeft;
+                if (OnlineMatch.Global != null)
+                {
+                    OnlineMatch.Global.OnError -= OnOnlineMatchError;
+                    OnlineMatch.Global.Disconnected -= OnOnlineMatchDisconnected;
+                    OnlineMatch.Global.PlayerLeft -= OnOnlineMatchPlayerLeft;
+                }
             }
         }
 
@@ -46,7 +49,7 @@ namespace NakamaWebRTCDemo
 
         private void OnOnlineMatchPlayerLeft(Player player)
         {
-            uiLayer.ShowMessage(player.Username + " has left");
+            uiLayer.ShowMessage(player.Username + " has left", 2f);
 
             gameSession.RemovePlayer(player);
 
@@ -61,8 +64,8 @@ namespace NakamaWebRTCDemo
         private void OnOnlineMatchError(string message)
         {
             // Kick the user back to the MatchScreen if we get an error
-            if (message == "")
-                uiLayer.ShowMessage(message);
+            if (message != "")
+                uiLayer.ShowMessage(message, 2f);
             uiLayer.ShowScreen("MatchScreen");
         }
     }

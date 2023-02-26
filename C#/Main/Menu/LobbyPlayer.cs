@@ -63,6 +63,7 @@ namespace NakamaWebRTCDemo
 
         public void Construct(Player player, LobbyPlayerStatus status = LobbyPlayerStatus.Connecting, int score = 0)
         {
+            Player = player;
             nameLabel.Text = player.Username;
             Status = status;
             Score = score;
