@@ -157,7 +157,7 @@ namespace NakamaWebRTCDemo
 
         private void RemovePlayer(Player player)
         {
-            LobbyPlayer lobbyPlayer = lobbyPlayerContainer.GetNode<LobbyPlayer>(player.SessionID);
+            LobbyPlayer lobbyPlayer = lobbyPlayerContainer.GetNodeOrNull<LobbyPlayer>(player.SessionID);
             if (lobbyPlayer != null)
             {
                 lobbyPlayer.QueueFree();

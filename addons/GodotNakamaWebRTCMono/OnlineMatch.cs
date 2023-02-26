@@ -206,6 +206,11 @@ namespace NakamaWebRTC
         private int nextPeerID;
         #endregion
 
+        #region Misc
+        // Used to suppress Nakama events until match is created
+        private bool isMatchCreated = false;
+        #endregion
+
         #region Readonly Vars
         public MatchMode MatchMode { get; private set; } = MatchMode.None;
         public MatchState MatchState { get; private set; } = MatchState.Lobby;
@@ -456,11 +461,14 @@ namespace NakamaWebRTC
 
         public async void CreateMatch(ISocket nakamaSocket)
         {
+            isMatchCreated = false;
             await Leave();
             NakamaSocket = nakamaSocket;
+            MatchMode = MatchMode.Create;
 
             try
             {
+                GD.Print($"{nameof(CreateMatch)}: pre createMatchAsync");
                 IMatch match = await nakamaSocket.CreateMatchAsync();
                 OnNakamaMatchCreated(match);
             }
@@ -561,6 +569,7 @@ namespace NakamaWebRTC
             nextPeerID = 1;
             MatchState = MatchState.Lobby;
             MatchMode = MatchMode.None;
+            GD.Print($"{nameof(Leave)}: Leaving");
         }
         #endregion
 
@@ -639,6 +648,7 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
+            GD.Print("OnNakamaMatchCreated " + match.Self + " || " + MySessionID);
             Player myPlayer = Player.FromPresence(match.Self, 1);
             sessionIDToPlayers[MySessionID] = myPlayer;
             nextPeerID = 2;
@@ -649,14 +659,24 @@ namespace NakamaWebRTC
             MatchCreated?.Invoke(MatchID);
             PlayerJoined?.Invoke(myPlayer);
             PlayerStatusChanged?.Invoke(myPlayer, PlayerStatus.Connected);
+            isMatchCreated = true;
         }
 
         private async void OnNakamaMatchPresence(IMatchPresenceEvent presence)
         {
+            if (MatchMode == MatchMode.Create && !isMatchCreated)
+            {
+                // Suppresss presecence updates until the match is created
+                return;
+            }
+            GD.Print($"{nameof(OnNakamaMatchPresence)}");
             // Handle joining
             foreach (var user in presence.Joins)
             {
-                if (user.SessionId == MySessionID) continue;
+                GD.Print($"{user.SessionId} == {MySessionID}");
+                if (user.SessionId == MySessionID)
+                    continue;
+
                 if (MatchMode == MatchMode.Create)
                 {
                     if (MatchState == MatchState.Playing)
@@ -752,6 +772,7 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
+            GD.Print($"{nameof(OnNakamaMatchJoined)}: {match.Self}");
 
             if (MatchMode == MatchMode.Join)
             {
@@ -772,6 +793,7 @@ namespace NakamaWebRTC
             // TODO: Do we need error handling for matchmaker? Where are excpetions thrown if there is an error?
 
             MySessionID = data.Self.Presence.SessionId;
+            GD.Print($"{nameof(OnNakamaMatchmakerMatched)}: {data.Self}");
 
             foreach (var user in data.Users)
                 sessionIDToPlayers[user.Presence.SessionId] = Player.FromPresence(user.Presence, 0);
@@ -937,7 +959,7 @@ namespace NakamaWebRTC
 
             WebRTCPeerAdded?.Invoke(webrtcPeer, player);
 
-            if (MySessionID.CasecmpTo(player.SessionID) < 0)
+            if (MySessionID.CompareTo(player.SessionID) < 0)
             {
                 var result = webrtcPeer.CreateOffer();
                 if (result != Error.Ok)
@@ -1059,7 +1081,7 @@ namespace NakamaWebRTC
             foreach (var player in Players)
             {
                 // We only intiate reconnection process from only one side (the offer side)
-                if (player.PeerID == peerID && MySessionID.CasecmpTo(player.SessionID) < 0)
+                if (player.PeerID == peerID && MySessionID.CompareTo(player.SessionID) < 0)
                 {
                     nakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.WebRTCPeerMethod,
                         new WebRTCPeerMethodPayload()
