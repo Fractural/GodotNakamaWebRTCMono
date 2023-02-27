@@ -81,8 +81,23 @@ namespace NakamaWebRTCDemo
             gameSession.RemovePlayer(player);
 
             // If we are below min players, then reopen the match after the results are shown
-            if (OnlineMatch.Global.MatchMode == MatchMode.Create && OnlineMatch.Global.IsBelowMinPlayers)
-                gameSession.RoundOverActionOverride = ReopenMatch;
+            if (OnlineMatch.Global.IsBelowMinPlayers)
+            {
+                if (OnlineMatch.Global.MatchMode == MatchMode.Matchmaker)
+                    // Leave match
+                    gameSession.RoundOverActionOverride = OnOnlineMatchDisconnected;
+                else
+                    // Reopen match if we're in a private lobby
+                    gameSession.RoundOverActionOverride = ReopenMatch;
+                // TODO NOW:
+                //  Separate the match lobby from the session lobby
+                //  Right now the lobby is doing double duty as both a lobby
+                //  for people to join and a lobby for existing players to ready up
+                //  in between matches. This is really hacky, and since the lobby calls
+                //  OnlineGame.StartGame() eaach time, OnlineGame then has to handle 
+                //  the lifecycle of the game (detecting if the game's started) rather
+                //  than GameSession.
+            }
         }
 
         private void ReopenMatch()
