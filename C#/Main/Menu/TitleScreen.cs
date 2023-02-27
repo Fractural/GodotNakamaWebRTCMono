@@ -22,6 +22,6 @@ namespace NakamaWebRTCDemo
 
         private void OnOnlineButtonPressed() => uiLayer.ShowScreen(nameof(ConnectionScreen));
 
-        private void OnLocalButtonPressed() => localGame.LoadAndStartGame();
+        private void OnLocalButtonPressed() => localGame.StartGame();
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
 using Godot;
 using NakamaWebRTC;
+using System;
 using System.Collections.Generic;
 
 namespace NakamaWebRTCDemo
@@ -15,8 +16,7 @@ namespace NakamaWebRTCDemo
         private GameSession gameSession;
         [OnReadyGet]
         private UILayer uiLayer;
-
-        public List<Player> Players = new List<Player>();
+        private bool hasGameStarted = false;
 
         [OnReady]
         public void RealReady()
@@ -24,6 +24,7 @@ namespace NakamaWebRTCDemo
             OnlineMatch.Global.OnError += OnOnlineMatchError;
             OnlineMatch.Global.Disconnected += OnOnlineMatchDisconnected;
             OnlineMatch.Global.PlayerLeft += OnOnlineMatchPlayerLeft;
+            OnlineMatch.Global.OnLeave += OnLeave;
         }
 
         public override void _Notification(int what)
@@ -35,16 +36,42 @@ namespace NakamaWebRTCDemo
                     OnlineMatch.Global.OnError -= OnOnlineMatchError;
                     OnlineMatch.Global.Disconnected -= OnOnlineMatchDisconnected;
                     OnlineMatch.Global.PlayerLeft -= OnOnlineMatchPlayerLeft;
+                    OnlineMatch.Global.OnLeave -= OnLeave;
                 }
             }
         }
 
-        public void LoadAndStartGame()
+        // Ran on host
+        public void StartGame()
         {
-            GameState.Global.OnlinePlay = true;
-            Players = new List<Player>(OnlineMatch.Global.Players);
+            this.TryRpc(nameof(StartGameEveryone));
+        }
 
-            gameSession.LoadAndStartSession(Players);
+        // Ran on everyone
+        [RemoteSync]
+        private void StartGameEveryone()
+        {
+            if (!hasGameStarted)
+            {
+                hasGameStarted = true;
+                OnlineMatch.Global.StartPlaying();
+                gameSession.StartSession(new List<Player>(OnlineMatch.Global.Players));
+            }
+            else
+                gameSession.StartSession();
+        }
+
+        private void OnLeave()
+        {
+            GameState.Global.OnlinePlay = false;
+            Reset();
+        }
+
+        // Ran on everyone when they first join/create a lobby
+        public void Reset()
+        {
+            hasGameStarted = false;
+            gameSession.Reset();
         }
 
         private void OnOnlineMatchPlayerLeft(Player player)
@@ -53,12 +80,24 @@ namespace NakamaWebRTCDemo
 
             gameSession.RemovePlayer(player);
 
-            Players.Remove(player);
+            // If we are below min players, then reopen the match after the results are shown
+            if (OnlineMatch.Global.MatchMode == MatchMode.Create && OnlineMatch.Global.IsBelowMinPlayers)
+                gameSession.RoundOverActionOverride = ReopenMatch;
+        }
+
+        private void ReopenMatch()
+        {
+            Reset();
+            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
+            {
+                MatchID = OnlineMatch.Global.MatchID
+            });
+            OnlineMatch.Global.ReopenMatch();
         }
 
         private void OnOnlineMatchDisconnected()
         {
-            uiLayer.ShowScreen("MatchScreen");
+            uiLayer.ShowScreen(nameof(MatchScreen));
         }
 
         private void OnOnlineMatchError(string message)
@@ -66,7 +105,7 @@ namespace NakamaWebRTCDemo
             // Kick the user back to the MatchScreen if we get an error
             if (message != "")
                 uiLayer.ShowMessage(message, 2f);
-            uiLayer.ShowScreen("MatchScreen");
+            uiLayer.ShowScreen(nameof(MatchScreen));
         }
     }
 }

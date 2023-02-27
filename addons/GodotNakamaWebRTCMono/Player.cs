@@ -9,6 +9,7 @@ namespace NakamaWebRTC
         public string SessionID { get; set; }
         public string Username { get; set; }
         public int PeerID { get; set; }
+        public PlayerStatus Status { get; set; } = PlayerStatus.Connecting;
 
         public Player() { }
 

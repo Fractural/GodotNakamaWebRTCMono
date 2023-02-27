@@ -21,7 +21,7 @@ namespace NakamaWebRTCDemo
         /// <summary>
         /// Starts a local game.
         /// </summary>
-        public void LoadAndStartGame()
+        public void StartGame()
         {
             GameState.Global.OnlinePlay = false;
             var players = new List<Player>()
@@ -29,7 +29,7 @@ namespace NakamaWebRTCDemo
                 Player.FromLocal("Player1", 1),
                 Player.FromLocal("Player2", 2),
             };
-            gameSession.LoadAndStartSession(players);
+            gameSession.StartSession(players);
         }
     }
 }

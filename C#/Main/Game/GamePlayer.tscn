@@ -53,6 +53,7 @@ script = ExtResource( 3 )
 MovementPath = NodePath("KinematicMovement")
 AttackPath = NodePath("LethalAttack")
 InputPath = NodePath("PlayerInput")
+ColliderPath = NodePath("CollisionShape2D")
 UsernameLabelPath = NodePath("NameRect/NameLabel")
 
 [node name="Sprite" type="Sprite" parent="."]

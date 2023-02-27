@@ -3,13 +3,15 @@ using Godot;
 
 namespace NakamaWebRTCDemo
 {
-    public partial class LethalAttack : Area2D, IAttack
+    public partial class LethalAttack : Area2D, IAttack, IEnable
     {
         [OnReadyGet]
         private GamePlayer owner;
         [OnReadyGet]
         private AnimationPlayer animationPlayer;
 
+        [Export]
+        public bool Enabled { get; set; } = true;
         [Export]
         public float ChargeDuration { get; set; } = 0.5f;
         [Export]
@@ -19,23 +21,21 @@ namespace NakamaWebRTCDemo
 
         public async void Use()
         {
-            if (!CanUse)
+            if (!CanUse || !Enabled || !IsNetworkMaster())
                 return;
             CanUse = false;
 
-            if (GameState.Global.OnlinePlay)
-                Rpc(nameof(ShowFx));
-            else
-                ShowFx();
+            this.TryRpc(RpcType.Local | RpcType.Master, nameof(ShowFx));
             await ToSignal(GetTree().CreateTimer(ChargeDuration), "timeout");
             foreach (Node body in GetOverlappingBodies())
                 if (body is GamePlayer player && player != owner && !player.IsDead)
-                    player.Kill();
+                    player.TryRpc(RpcType.Local, nameof(player.Kill));
+            // TODO NOW:
             await ToSignal(GetTree().CreateTimer(Cooldown), "timeout");
             CanUse = true;
         }
 
-        [Puppet]
+        [PuppetSync]
         private void ShowFx()
         {
             animationPlayer.Play("Attack");

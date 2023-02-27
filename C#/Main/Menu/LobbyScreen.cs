@@ -14,6 +14,10 @@ namespace NakamaWebRTCDemo
             public IReadOnlyCollection<Player> Players { get; set; }
             public IReadOnlyCollection<GameSessionPlayer> GameSessionPlayers { get; set; }
             public string MatchID { get; set; }
+            // True when the user just created/joined the match and went into this lobby
+            // Used for first time setup stuff, such as resetting the OnlineGame nodes on
+            // all players.
+            public bool JustJoinedMatch { get; set; } = false;
         }
 
         public List<LobbyPlayer> LobbyPlayers { get; private set; } = new List<LobbyPlayer>();
@@ -67,7 +71,7 @@ namespace NakamaWebRTCDemo
         {
             base.ShowScreen(args);
 
-            // Also leave match
+            // Back button returns to match screen and also leaves match
             uiLayer.BackButtonActionOverride = async () =>
             {
                 uiLayer.ShowScreen(nameof(MatchScreen));
@@ -85,6 +89,11 @@ namespace NakamaWebRTCDemo
                     players = castedArgs.Players;
                 if (castedArgs.MatchID != null)
                     matchID = castedArgs.MatchID;
+                if (castedArgs.JustJoinedMatch)
+                {
+                    GameState.Global.OnlinePlay = true;
+                    onlineGame.Reset();
+                }
             }
 
             ClearLobbyPlayers();
@@ -95,6 +104,10 @@ namespace NakamaWebRTCDemo
                 // Add game session players.
                 foreach (var sessionPlayer in castedArgs.GameSessionPlayers)
                     AddLobbyPlayer(sessionPlayer);
+                // Let people ready themselves up -- No need to
+                // wait for MatchReady because everyone is already
+                // connected to each other.
+                SetReadyButtonEnabled(true);
             }
             else
             {
@@ -102,6 +115,9 @@ namespace NakamaWebRTCDemo
                 // Add players that are already in the lobby if any.
                 foreach (var player in players)
                     AddLobbyPlayer(player);
+                // Disable the ready button by default until OnlineMatch
+                // tells us everyone is connected via WebRTC.
+                SetReadyButtonEnabled(false);
             }
 
             // NOTE: MatchID is only passed in when
@@ -115,7 +131,7 @@ namespace NakamaWebRTCDemo
             }
             else
             {
-                matchIDLineEdit.Visible = false;
+                matchIDContainer.Visible = false;
             }
 
             readyButton.GrabFocus();
@@ -175,12 +191,6 @@ namespace NakamaWebRTCDemo
             return LobbyPlayers.Find(x => x.Player == player);
         }
 
-        public void SetAllStatus(LobbyPlayerStatus status)
-        {
-            foreach (LobbyPlayer child in lobbyPlayerContainer.GetChildren())
-                child.Status = status;
-        }
-
         private void SetReadyButtonEnabled(bool enabled)
         {
             readyButton.Disabled = !enabled;
@@ -199,7 +209,7 @@ namespace NakamaWebRTCDemo
             if (GetTree().IsNetworkServer())
             {
                 if (LobbyPlayers.All(x => x.Status == LobbyPlayerStatus.Readied))
-                    onlineGame.LoadAndStartGame();
+                    onlineGame.StartGame();
             }
         }
 

@@ -1,6 +1,6 @@
 ﻿namespace NakamaWebRTCDemo
 {
-    public interface IAttack
+    public interface IAttack : IEnable
     {
         void Use();
     }

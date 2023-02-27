@@ -8,7 +8,7 @@ namespace NakamaWebRTCDemo
     /// as synchronization when this node is a mere 
     /// puppet.
     /// </summary>
-    public partial class PlayerInput : Node
+    public partial class PlayerInput : Node, IEnable
     {
         public enum ModeEnum
         {
@@ -21,19 +21,16 @@ namespace NakamaWebRTCDemo
         private GamePlayer player;
 
         [Export]
+        public bool Enabled { get; set; } = true;
+        [Export]
         public ModeEnum Mode { get; set; } = ModeEnum.Control;
         [Export]
         public string InputPrefix { get; set; } = "";
 
-        public void Construct(GamePlayer player)
-        {
-            this.player = player;
-        }
-
         // NOTE: Synchronization is handled by IMovement and IAttack individually
         public override void _Process(float delta)
         {
-            if (Mode != ModeEnum.Control)
+            if (Mode != ModeEnum.Control || !Enabled)
                 return;
 
             player.Movement.Direction = new Vector2(

@@ -39,7 +39,7 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                if (OnlineMatch.Global != null) 
+                if (OnlineMatch.Global != null)
                 {
                     OnlineMatch.Global.MatchmakerMatched -= OnMatchmakerMatched;
                     OnlineMatch.Global.MatchCreated -= OnMatchCreated;
@@ -119,7 +119,8 @@ namespace NakamaWebRTCDemo
             uiLayer.HideMessage();
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
-                Players = players
+                Players = players,
+                JustJoinedMatch = true,
             });
         }
 
@@ -132,7 +133,8 @@ namespace NakamaWebRTCDemo
         {
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
-                MatchID = matchID
+                MatchID = matchID,
+                JustJoinedMatch = true,
             });
         }
 
@@ -154,7 +156,8 @@ namespace NakamaWebRTCDemo
         {
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
-                MatchID = matchID
+                MatchID = matchID,
+                JustJoinedMatch = true,
             });
         }
 

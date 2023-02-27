@@ -16,12 +16,12 @@ namespace NakamaWebRTC
     //       SessionID is from Nakama
     public enum MatchState
     {
-        Lobby,
-        Matching,
-        Connecting,
-        WaitingForEnoughPlayers,
-        Ready,
-        Playing
+        None,                       // We are not in a match right now.
+        Matching,                   // We are waiting for a match to be found by the matchmaker.
+        Connecting,                 // We are trying to connect to a player.
+        WaitingForEnoughPlayers,    // There's not enough players.
+        Ready,                      // All players are connected.
+        Playing                     // All players are connected and a game is being played. if a player's WebRTC connection drops we still keep the state as playing while we try to reconnect them.
     }
 
     public enum MatchMode
@@ -92,6 +92,8 @@ namespace NakamaWebRTC
         public static OnlineMatch Global { get; private set; }
 
         #region Settings
+        // TODO: Implement joining mid match (likely have to pause the game to resync and then resume (genshin style)
+        public bool AllowJoiningMidMatch { get; set; } = false;
         public int MinPlayers { get; set; } = 2;
         public int MaxPlayers { get; set; } = 4;
         public string ClientVersion => "dev";
@@ -99,6 +101,7 @@ namespace NakamaWebRTC
         {
             Urls = new[] { "stun:stun.l.google.com:19302" },
         };
+
         public MatchmakingArgs DefaultMatchmakingArgs { get; private set; } = new MatchmakingArgs()
         {
             MinCount = 2,
@@ -145,6 +148,7 @@ namespace NakamaWebRTC
                 }
             }
         }
+        public bool IsBelowMinPlayers => Players.Count < MinPlayers;
         public int MyPeerID => GetTree().NetworkPeer?.GetUniqueId() ?? -1;
         public string MySessionID { get; private set; }
         public string MatchID { get; private set; }
@@ -164,10 +168,18 @@ namespace NakamaWebRTC
         private Dictionary<string, Player> sessionIDToPlayers = new Dictionary<string, Player>();
         private int nextPeerID;
         #endregion
-        
+
         #region Readonly Vars
         public MatchMode MatchMode { get; private set; } = MatchMode.None;
-        public MatchState MatchState { get; private set; } = MatchState.Lobby;
+        private MatchState matchState = MatchState.None;
+        public MatchState MatchState
+        {
+            get => matchState;
+            private set
+            {
+                matchState = value;
+            }
+        }
         public static readonly IReadOnlyDictionary<JoinErrorReason, string> JoinErrorMessages = new Dictionary<JoinErrorReason, string>()
         {
             [JoinErrorReason.MatchHasAlreadyBegun] = "Sorry! The match has already begun.",
@@ -197,7 +209,6 @@ namespace NakamaWebRTC
         public event Action<ErrorCode, string, object> OnErrorCode;
         // TODO: Remove extra if unused. originally used for exceptions, which are not needed for C#
 
-        // TODO: Rename this to avoid collision
         public event Action Disconnected;
 
         // string matchID
@@ -216,12 +227,16 @@ namespace NakamaWebRTC
 
         // IEnumerable<Player> Players
         public event Action<IReadOnlyCollection<Player>> MatchReady;
+        // Emitted when player WebRTC connection disconnects or new player joins
         public event Action MatchNotReady;
+        // Emitted when a match falls under the minimum player count.
+        public event Action MatchUnderMinimumPlayerCount;
 
         // WebRTCPeerConnection webrtcPeer, Player player
         public event Action<WebRTCPeerConnection, Player> WebRTCPeerAdded;
         // WebRTCPeerConnection webrtcPeer, Player player
         public event Action<WebRTCPeerConnection, Player> WebRTCPeerRemoved;
+        public event Action OnLeave;
         #endregion
 
         #region Match State Payloads
@@ -421,7 +436,6 @@ namespace NakamaWebRTC
 
             try
             {
-                GD.Print($"{nameof(CreateMatch)}: pre createMatchAsync");
                 IMatch match = await nakamaSocket.CreateMatchAsync();
                 OnNakamaMatchCreated(match);
             }
@@ -491,8 +505,30 @@ namespace NakamaWebRTC
             MatchState = MatchState.Playing;
         }
 
+        // Change a playing match back into a lobby
+        public void ReopenMatch()
+        {
+            Debug.Assert(MatchState == MatchState.Playing);
+            if (Players.All(x => x.Status == PlayerStatus.Connected))
+            {
+                if (Players.Count < MinPlayers)
+                    MatchState = MatchState.WaitingForEnoughPlayers;
+                else
+                    MatchState = MatchState.Ready;
+            }
+            else
+                MatchState = MatchState.Connecting;
+
+            foreach (var player in Players)
+            {
+                PlayerJoined?.Invoke(player);
+                UpdateAndEmitPlayerStatus(player, player.Status);
+            }
+        }
+
         public async Task Leave(bool closeSocket = false)
         {
+            OnLeave?.Invoke();
             if (webrtcMultiplayer != null)
             {
                 webrtcMultiplayer.Close();
@@ -520,13 +556,20 @@ namespace NakamaWebRTC
             webrtcPeersConnected.Clear();
             sessionIDToPlayers.Clear();
             nextPeerID = 1;
-            MatchState = MatchState.Lobby;
+            MatchState = MatchState.None;
             MatchMode = MatchMode.None;
             GD.Print($"{nameof(Leave)}: Leaving");
         }
         #endregion
 
         #region Helper Methods
+        // Update the player's status and emit the changes
+        private void UpdateAndEmitPlayerStatus(Player player, PlayerStatus newStatus)
+        {
+            player.Status = newStatus;
+            PlayerStatusChanged?.Invoke(player, newStatus);
+        }
+
         private void EmitError(ErrorCode code, object extra = null)
         {
             string message = ErrorMessages[code];
@@ -580,7 +623,7 @@ namespace NakamaWebRTC
                 return GetWebRTCPeer(player.SessionID);
             return null;
         }
-        #endregion
+        #endregion/
 
         #region Nakama
         private async void OnNakamaError(Exception error)
@@ -610,49 +653,58 @@ namespace NakamaWebRTC
             GetTree().NetworkPeer = webrtcMultiplayer;
 
             MatchCreated?.Invoke(MatchID);
+            // NOTE: We have to emit player joined here to populate the lobby wit the creator
+            //       We don't do this for matchmaking because we actually directly emit
+            //       the players in the match when MatchmakerMatched.
             PlayerJoined?.Invoke(myPlayer);
-            PlayerStatusChanged?.Invoke(myPlayer, PlayerStatus.Connected);
+            UpdateAndEmitPlayerStatus(myPlayer, PlayerStatus.Connected);
         }
 
         private async void OnNakamaMatchPresence(IMatchPresenceEvent presence)
         {
-            GD.Print($"{nameof(OnNakamaMatchPresence)}");
             // Handle joining
             foreach (var user in presence.Joins)
             {
-                GD.Print($"{user.SessionId} == {MySessionID}");
                 if (user.SessionId == MySessionID)
                     continue;
 
                 if (MatchMode == MatchMode.Create)
                 {
-                    if (MatchState == MatchState.Playing)
+                    if (sessionIDToPlayers.Count < MaxPlayers)
                     {
-                        // Tell this player that we've already started
-                        // TODO: Maybe add feature for mid match resynchronization
-                        await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
-                            new JoinErrorPayload()
-                            {
-                                Target = user.SessionId,
-                                Code = JoinErrorReason.MatchHasAlreadyBegun,
-                                Reason = JoinErrorMessages[JoinErrorReason.MatchHasAlreadyBegun],
-                            }.Serialize());
-                    }
-                    else if (sessionIDToPlayers.Count < MaxPlayers)
-                    {
-                        Player newPlayer = Player.FromPresence(user, nextPeerID);
-                        nextPeerID++;
-                        sessionIDToPlayers[user.SessionId] = newPlayer;
-                        PlayerJoined?.Invoke(newPlayer);
+                        if (MatchState != MatchState.Playing || (MatchState == MatchState.Playing && AllowJoiningMidMatch))
+                        {
+                            // We are in the initial lobby, or we are playing and allow joining mid match
 
-                        await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinSuccess,
-                            new JoinSuccessPayload()
-                            {
-                                Players = Players,
-                                HostClientVersion = ClientVersion
-                            }.Serialize());
+                            Player newPlayer = Player.FromPresence(user, nextPeerID);
+                            nextPeerID++;
+                            sessionIDToPlayers[user.SessionId] = newPlayer;
+                            PlayerJoined?.Invoke(newPlayer);
 
-                        WebRTCConnectPeer(newPlayer);
+                            // Tell other players we've joined. This will also trigger those
+                            // players to move their MatchState back to connecting as they
+                            // try to make WebRTC connections with us.
+                            await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinSuccess,
+                                new JoinSuccessPayload()
+                                {
+                                    Players = Players,
+                                    HostClientVersion = ClientVersion
+                                }.Serialize());
+
+                            WebRTCConnectPeer(newPlayer);
+                        }
+                        else
+                        {
+                            // Match is playing and we cannot join mid match
+                            // Tell this player that we've already started
+                            await NakamaSocket.SendMatchStateAsync(MatchID, (long)MatchOpCode.JoinError,
+                                new JoinErrorPayload()
+                                {
+                                    Target = user.SessionId,
+                                    Code = JoinErrorReason.MatchHasAlreadyBegun,
+                                    Reason = JoinErrorMessages[JoinErrorReason.MatchHasAlreadyBegun],
+                                }.Serialize());
+                        }
                     }
                     else
                     {
@@ -693,19 +745,21 @@ namespace NakamaWebRTC
 
                     if (sessionIDToPlayers.Count < MinPlayers)
                     {
-                        // IF the state was previously, ready, but this brings us below the minimum players,
+                        // If the state was previously, ready, but this brings us below the minimum players,
                         // then we aren't ready anymore
                         if (MatchState == MatchState.Ready)
                         {
                             MatchState = MatchState.WaitingForEnoughPlayers;
                             MatchNotReady?.Invoke();
                         }
+                        else if (MatchState == MatchState.Playing)
+                            MatchUnderMinimumPlayerCount?.Invoke();
                     }
                     else
                     {
                         // If the remaining players are fully connected, then set
                         // the match state to ready
-                        if (webrtcPeersConnected.Count == sessionIDToPlayers.Count - 1)
+                        if (MatchState != MatchState.Playing && webrtcPeersConnected.Count == sessionIDToPlayers.Count - 1)
                         {
                             MatchState = MatchState.Ready;
                             MatchReady?.Invoke(sessionIDToPlayers.Values);
@@ -719,8 +773,6 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
-
-            GD.Print($"{nameof(OnNakamaMatchJoined)}: {match.Self}");
 
             if (MatchMode == MatchMode.Join)
             {
@@ -738,10 +790,7 @@ namespace NakamaWebRTC
 
         private async void OnNakamaMatchmakerMatched(IMatchmakerMatched data)
         {
-            // TODO: Do we need error handling for matchmaker? Where are excpetions thrown if there is an error?
-
             MySessionID = data.Self.Presence.SessionId;
-            GD.Print($"{nameof(OnNakamaMatchmakerMatched)}: {data.Self}");
 
             foreach (var user in data.Users)
                 sessionIDToPlayers[user.Presence.SessionId] = Player.FromPresence(user.Presence, 0);
@@ -756,7 +805,7 @@ namespace NakamaWebRTC
             GetTree().NetworkPeer = webrtcMultiplayer;
 
             MatchmakerMatched?.Invoke(Players);
-            PlayerStatusChanged?.Invoke(sessionIDToPlayers[MySessionID], PlayerStatus.Connected);
+            UpdateAndEmitPlayerStatus(sessionIDToPlayers[MySessionID], PlayerStatus.Connected);
 
             // Join the match
             try
@@ -857,7 +906,7 @@ namespace NakamaWebRTC
                     {
                         webrtcMultiplayer.Initialize(player.PeerID);
                         GetTree().NetworkPeer = webrtcMultiplayer;
-                        PlayerStatusChanged?.Invoke(player, PlayerStatus.Connected);
+                        UpdateAndEmitPlayerStatus(player, PlayerStatus.Connected);
                     }
                 }
             }
@@ -877,7 +926,7 @@ namespace NakamaWebRTC
         #endregion
 
         #region WebRTC
-        private void WebRTCConnectPeer(Player player)
+        private void WebRTCConnectPeer(Player player, bool isReconnect = false)
         {
             // Don't add the same player twice
             if (webrtcPeers.ContainsKey(player.SessionID))
@@ -887,9 +936,8 @@ namespace NakamaWebRTC
             if (MatchState == MatchState.Ready)
                 MatchNotReady?.Invoke();
 
-            // If we're already playing, then this is a reconnect attempt, so don't mess with the state
-            // Otherwise, change state to connecting becasue we're trying to connect to all peers
-            if (MatchState != MatchState.Playing)
+            // If we are reconnecting with a client, then don't change the MatchState
+            if (!isReconnect)
                 MatchState = MatchState.Connecting;
 
             var webrtcPeer = new WebRTCPeerConnection();
@@ -937,9 +985,9 @@ namespace NakamaWebRTC
 
             GD.Print($"{nameof(OnlineMatch)}: Starting WebRTC reconnect...");
 
-            WebRTCConnectPeer(player);
+            WebRTCConnectPeer(player, isReconnect: true);
 
-            PlayerStatusChanged?.Invoke(player, PlayerStatus.Connecting);
+            UpdateAndEmitPlayerStatus(player, PlayerStatus.Connecting);
 
             if (MatchState == MatchState.Ready)
             {
@@ -1000,7 +1048,7 @@ namespace NakamaWebRTC
                 {
                     webrtcPeersConnected[player.SessionID] = true;
                     GD.Print($"{nameof(OnlineMatch)}: WebRTC peer connected: " + peerID);
-                    PlayerStatusChanged?.Invoke(player, PlayerStatus.Connected);
+                    UpdateAndEmitPlayerStatus(player, PlayerStatus.Connected);
                 }
             }
 
@@ -1021,7 +1069,7 @@ namespace NakamaWebRTC
             }
         }
 
-        // If we loose a WebRTC connection, we try to reconnect
+        // If we lose a WebRTC connection, we try to reconnect
         private void OnWebRTCPeerDisconnected(int peerID)
         {
             GD.Print($"{nameof(OnlineMatch)}: WebRTC peer disconnected: " + peerID);

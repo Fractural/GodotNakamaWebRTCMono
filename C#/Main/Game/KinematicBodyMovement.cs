@@ -3,11 +3,13 @@ using Godot;
 
 namespace NakamaWebRTCDemo
 {
-    public partial class KinematicBodyMovement : Node, IMovement
+    public partial class KinematicBodyMovement : Node, IMovement, IEnable
     {
         [OnReadyGet]
         private KinematicBody2D body;
 
+        [Export]
+        public bool Enabled { get; set; } = true;
         [Export]
         public Vector2 Direction { get; set; }
         [Export]
@@ -15,10 +17,11 @@ namespace NakamaWebRTCDemo
 
         public override void _PhysicsProcess(float delta)
         {
+            if (!Enabled || !IsNetworkMaster()) return;
+
             body.MoveAndSlide(Direction * Speed * delta);
 
-            if (GameState.Global.OnlinePlay)
-                Rpc(nameof(UpdateRemoteBody), body.GlobalPosition);
+            this.TryRpc(RpcType.Local | RpcType.Master | RpcType.Unreliable, nameof(UpdateRemoteBody), body.GlobalPosition);
         }
 
         [Puppet]

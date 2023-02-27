@@ -5,7 +5,7 @@ using System;
 
 namespace NakamaWebRTCDemo
 {
-    public partial class GamePlayer : KinematicBody2D
+    public partial class GamePlayer : KinematicBody2D, IEnable
     {
         // Player stores everything controlleed
         // by an input node here. In this basic example it's
@@ -16,12 +16,32 @@ namespace NakamaWebRTCDemo
         public IAttack Attack { get; private set; }
         [OnReadyGet]
         public PlayerInput Input { get; private set; }
-
+        
+        [OnReadyGet]
+        private CollisionShape2D collider;
         [OnReadyGet]
         private Label usernameLabel;
 
         public Player Player { get; set; }
+
+        [Export]
+        private bool enabled = true;
+        public bool Enabled
+        {
+            get => enabled;
+            set
+            {
+                enabled = value;
+                Movement.Enabled = value;
+                Attack.Enabled = value;
+                Input.Enabled = value;
+                collider.Disabled = !value;
+            }
+        }
+        // Used by host
+        [Export]
         public bool IsSetUp { get; set; } = false;
+        [Export]
         public bool IsDead { get; set; } = false;
 
         public event Action Death;
@@ -35,11 +55,15 @@ namespace NakamaWebRTCDemo
             usernameLabel.Text = player.Username;
         }
 
+        [RemoteSync]
         public void Kill()
         {
+            if (IsDead || !Enabled)
+                return;
             IsDead = true;
+            Enabled = false;
             Death?.Invoke();
-            QueueFree();
+            Visible = false;
         }
     }
 }

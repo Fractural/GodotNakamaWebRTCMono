@@ -11,6 +11,8 @@ namespace NakamaWebRTCDemo
     {
         public Player Player { get; set; }
         public int Score { get; set; }
+        // Used by host
+        public bool IsSetUp { get; set; } = false;
     }
 
     /// <summary>
@@ -32,6 +34,7 @@ namespace NakamaWebRTCDemo
         private Game game;
 
         public List<GameSessionPlayer> GameSessionPlayers { get; private set; } = new List<GameSessionPlayer>();
+        public Action RoundOverActionOverride { get; set; }
 
         [OnReady]
         public void RealReady()
@@ -54,13 +57,25 @@ namespace NakamaWebRTCDemo
             }
         }
 
-        public void LoadAndStartSession(List<Player> players)
+        // Ran on everyone
+        //
+        // initializedPlayers is only set the first time the session is started.
+        // Afterwords, we maintain the GameSessionPlayers list using
+        // RemovePlayer calls made from OnlineGame.
+        public void StartSession(List<Player> intializedPlayers = null)
         {
-            GameSessionPlayers = players.Select(x => new GameSessionPlayer()
-            {
-                Player = x
-            }).ToList();
+            if (intializedPlayers != null)
+                GameSessionPlayers = intializedPlayers.Select(x => new GameSessionPlayer()
+                {
+                    Player = x
+                }).ToList();
             StartGame();
+        }
+
+        public void Reset()
+        {
+            GameSessionPlayers.Clear();
+            game.StopGame();
         }
 
         public GameSessionPlayer GetSessionPlayer(int playerID)
@@ -74,11 +89,9 @@ namespace NakamaWebRTCDemo
             GameSessionPlayers.RemoveAll(x => x.Player == player);
         }
 
+        // Called on everyone
         private void StartGame()
         {
-            uiLayer.HideAll();
-            uiLayer.ShowBackButton();
-            uiLayer.BackButtonActionOverride = StopSession;
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
             // we can still continue with the remaining 
@@ -103,10 +116,13 @@ namespace NakamaWebRTCDemo
             StartGame();
         }
 
+        // Called on everyone, since when the host makes the game start,
+        // game.OnGameStarted will be invoked
         private void OnGameStarted()
         {
             uiLayer.HideAll();
             uiLayer.ShowBackButton();
+            uiLayer.BackButtonActionOverride = StopSession;
         }
 
         private void OnPlayerDead(int peerID)
@@ -145,13 +161,13 @@ namespace NakamaWebRTCDemo
 
             await ToSignal(GetTree().CreateTimer(2.0f), "timeout");
 
-            // What is this for??
-            if (!game.HasGameStarted)
-                return;
-
             if (GameState.Global.OnlinePlay)
             {
-                if (isMatchOver)
+                if (RoundOverActionOverride != null)
+                {
+                    RoundOverActionOverride();
+                    RoundOverActionOverride = null;
+                } else if (isMatchOver)
                     StopSession();
                 else
                 {

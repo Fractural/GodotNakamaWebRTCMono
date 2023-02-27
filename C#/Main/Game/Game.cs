@@ -5,7 +5,6 @@ using NakamaWebRTC;
 using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using System.Linq;
-using NakamaWebRTC;
 
 namespace NakamaWebRTCDemo
 {
@@ -31,14 +30,10 @@ namespace NakamaWebRTCDemo
         public event Action<int> PlayerDied;
         public event Action<int> OnGameOver;
 
-        // Should only be ran by the server
+        // Ran on everyone
         public void LoadAndStartGame(List<Player> players)
         {
-            var bytePlayers = players.Serialize();
-            if (GameState.Global.OnlinePlay)
-                Rpc(nameof(SetupGame), (object)bytePlayers);
-            else
-                SetupGame(bytePlayers);
+            StartSetup(players);
         }
 
         public GamePlayer GetGamePlayer(Player player) => GetGamePlayer(player.PeerID);
@@ -58,11 +53,8 @@ namespace NakamaWebRTCDemo
             }
         }
 
-        [RemoteSync]
-        private void SetupGame(byte[] bytePlayers)
+        private void StartSetup(List<Player> players)
         {
-            var players = bytePlayers.DeserializeArray<Player>();
-
             if (HasGameStarted)
                 StopGame();
 
@@ -103,7 +95,7 @@ namespace NakamaWebRTCDemo
                 myGamePlayer.Input.Mode = PlayerInput.ModeEnum.Control;
                 myGamePlayer.Input.InputPrefix = $"player1_";
                 // Tell server we've succesfully setup the game
-                RpcId(1, nameof(FinishedGameSetup), GetTree().GetNetworkUniqueId());
+                RpcId(1, nameof(FinishedSetup), GetTree().GetNetworkUniqueId());
             }
             else
             {
@@ -116,7 +108,7 @@ namespace NakamaWebRTCDemo
         // In this case, the server (peer 1) is receiving
         // "readied" calls from the others
         [MasterSync]
-        public void FinishedGameSetup(int playerID)
+        private void FinishedSetup(int playerID)
         {
             // Once all clients are set up tell them to start the game
             // We do this waiting in case the map load slower on
@@ -124,7 +116,10 @@ namespace NakamaWebRTCDemo
             var gamePlayer = GetGamePlayer(playerID);
             gamePlayer.IsSetUp = true;
             if (GamePlayers.All(x => x.IsSetUp))
+            {
+                GD.Print("All players are ready, calling start game");
                 Rpc(nameof(StartGame));
+            }
         }
 
         // Actually start the game
@@ -132,7 +127,7 @@ namespace NakamaWebRTCDemo
         [RemoteSync]
         public void StartGame()
         {
-            HasGameStarted = true;
+            OnGameStarted?.Invoke();
             GetTree().Paused = false;
         }
 
@@ -155,6 +150,8 @@ namespace NakamaWebRTCDemo
             // If there's only one player alive
             if (GamePlayers.Count() == 1)
             {
+                // Note that all players independently see a game over, but it's
+                // ultimately the host who will show the winner to everyone.
                 IsGameOver = true;
                 OnGameOver?.Invoke(GamePlayers[0].Player.PeerID);
             }
