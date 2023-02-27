@@ -5,6 +5,7 @@ using NakamaWebRTC;
 using GDC = Godot.Collections;
 using Fractural.GodotCodeGenerator.Attributes;
 using System.Linq;
+using NakamaWebRTC;
 
 namespace NakamaWebRTCDemo
 {
@@ -33,10 +34,11 @@ namespace NakamaWebRTCDemo
         // Should only be ran by the server
         public void LoadAndStartGame(List<Player> players)
         {
+            var bytePlayers = players.Serialize();
             if (GameState.Global.OnlinePlay)
-                Rpc(nameof(SetupGame), players);
+                Rpc(nameof(SetupGame), (object)bytePlayers);
             else
-                SetupGame(players);
+                SetupGame(bytePlayers);
         }
 
         public GamePlayer GetGamePlayer(Player player) => GetGamePlayer(player.PeerID);
@@ -57,9 +59,9 @@ namespace NakamaWebRTCDemo
         }
 
         [RemoteSync]
-        private void SetupGame(List<Player> players)
+        private void SetupGame(byte[] bytePlayers)
         {
-            GetTree().Paused = true;
+            var players = bytePlayers.DeserializeArray<Player>();
 
             if (HasGameStarted)
                 StopGame();
@@ -72,12 +74,16 @@ namespace NakamaWebRTCDemo
             AddChild(map);
 
             // Respawn players
+            // Note that we need a playerIdx counter to assign spawn positions, since we cannot rely on
+            // PeerID to be < total # of players. If people keep joining/leaving a match, this could
+            // bump the PeerID over the number of actual players left in a match.
+            int playerIdx = 1;
             foreach (var player in players)
             {
                 var gamePlayerInst = playerPrefab.Instance<GamePlayer>();
                 playerContainer.AddChild(gamePlayerInst);
                 gamePlayerInst.Construct(player);
-                gamePlayerInst.GlobalPosition = map.GetNode<Node2D>("PlayerStartPositions/Player" + player.PeerID).GlobalPosition;
+                gamePlayerInst.GlobalPosition = map.GetNode<Node2D>("PlayerStartPositions/Player" + playerIdx).GlobalPosition;
                 gamePlayerInst.Death += () => OnPlayerDeath(player.PeerID);
                 GamePlayers.Add(gamePlayerInst);
 
@@ -86,8 +92,9 @@ namespace NakamaWebRTCDemo
                 else
                 {
                     gamePlayerInst.Input.Mode = PlayerInput.ModeEnum.Control;
-                    gamePlayerInst.Input.InputPrefix = $"player{player.PeerID}_";
+                    gamePlayerInst.Input.InputPrefix = $"player{playerIdx}_";
                 }
+                playerIdx++;
             }
 
             if (GameState.Global.OnlinePlay)

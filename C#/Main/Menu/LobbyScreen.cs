@@ -157,7 +157,7 @@ namespace NakamaWebRTCDemo
 
         private void RemovePlayer(Player player)
         {
-            LobbyPlayer lobbyPlayer = lobbyPlayerContainer.GetNodeOrNull<LobbyPlayer>(player.SessionID);
+            LobbyPlayer lobbyPlayer = LobbyPlayers.Find(x => x.Player == player);
             if (lobbyPlayer != null)
             {
                 lobbyPlayer.QueueFree();
@@ -183,7 +183,7 @@ namespace NakamaWebRTCDemo
 
         private void SetReadyButtonEnabled(bool enabled)
         {
-            readyButton.Disabled = enabled;
+            readyButton.Disabled = !enabled;
             if (enabled)
                 readyButton.GrabFocus();
         }

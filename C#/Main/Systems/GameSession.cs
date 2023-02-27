@@ -45,7 +45,7 @@ namespace NakamaWebRTCDemo
         {
             if (what == NotificationPredelete)
             {
-                if (game != null) 
+                if (game != null)
                 {
                     game.OnGameStarted -= OnGameStarted;
                     game.OnGameOver -= OnGameOver;
@@ -130,7 +130,7 @@ namespace NakamaWebRTCDemo
                 var winningSessionPlayer = GetSessionPlayer(winningPlayerID);
                 winningSessionPlayer.Score += 1;
                 bool isMatchOver = winningSessionPlayer.Score >= WinningScore;
-                Rpc(nameof(ShowResults), winningSessionPlayer.Player.Username, winningPlayerID, winningSessionPlayer.Score, isMatchOver);
+                Rpc(nameof(ShowResults), winningPlayerID, winningSessionPlayer.Score, isMatchOver);
             }
         }
 
@@ -139,9 +139,9 @@ namespace NakamaWebRTCDemo
         {
             var winningSessionPlayer = GetSessionPlayer(playerID);
             if (isMatchOver)
-                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins the whole match!");
+                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins the whole match!", 4f);
             else
-                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins this round!");
+                uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins this round!", 4f);
 
             await ToSignal(GetTree().CreateTimer(2.0f), "timeout");
 

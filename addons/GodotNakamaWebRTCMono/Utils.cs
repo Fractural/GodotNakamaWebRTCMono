@@ -1,5 +1,6 @@
 ﻿using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using GDC = Godot.Collections;
 
@@ -14,11 +15,30 @@ namespace NakamaWebRTC
             return buffer;
         }
 
+        public static byte[] Serialize(this IEnumerable<IBufferSerializable> serializableArray)
+        {
+            var buffer = new StreamPeerBuffer();
+            buffer.Put32(serializableArray.Count());
+            foreach (var serializable in serializableArray)
+                buffer.PutData(serializable.Serialize());
+            return buffer.DataArray;
+        }
+
         public static byte[] Serialize(this IBufferSerializable serializable)
         {
             var buffer = new StreamPeerBuffer();
             serializable.Serialize(buffer);
             return buffer.DataArray;
+        }
+
+        public static T[] DeserializeArray<T>(this byte[] byteArray) where T : IBufferSerializable, new()
+        {
+            var buffer = new StreamPeerBuffer();
+            buffer.DataArray = byteArray;
+            T[] array = new T[buffer.Get32()];
+            for (int i = 0; i < array.Length; i++)
+                array[i] = buffer.GetSerializable<T>();
+            return array;
         }
 
         public static T Deserialize<T>(this byte[] byteArray) where T : IBufferSerializable, new()

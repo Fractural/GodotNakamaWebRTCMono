@@ -20,22 +20,6 @@ namespace NakamaWebRTCDemo
         public string NakamaScheme = "http";
 
         private Client nakamaClient;
-        private Client NakamaClient
-        {
-            get
-            {
-                if (nakamaClient == null)
-                {
-                    nakamaClient = new Client(
-                        scheme: NakamaScheme,
-                        host: NakamaHost,
-                        port: NakamaPort,
-                        serverKey: NakamaServerKey
-                    );
-                }
-                return nakamaClient;
-            }
-        }
 
         [Awaitable]
         public event Action<ISession> SessionChanged;
@@ -61,6 +45,8 @@ namespace NakamaWebRTCDemo
         public ISocket NakamaSocket { get; private set; }
 
         private bool nakamaSocketConnecting = false;
+        private GodotHttpAdapter godotHttpAdapter;
+        private GodotWebSocketAdapter godotWebSocketAdapter;
 
         public bool IsNakamaSocketConnected => NakamaSocket != null && NakamaSocket.IsConnected;
 
@@ -72,6 +58,18 @@ namespace NakamaWebRTCDemo
                 return;
             }
             Global = this;
+
+            godotHttpAdapter = new GodotHttpAdapter();
+            godotWebSocketAdapter = new GodotWebSocketAdapter();
+            AddChild(godotHttpAdapter);
+            AddChild(godotWebSocketAdapter);
+            nakamaClient = new Client(
+                scheme: NakamaScheme,
+                host: NakamaHost,
+                port: NakamaPort,
+                serverKey: NakamaServerKey,
+                adapter: godotHttpAdapter
+            );
         }
 
         public override void _Notification(int what)
@@ -91,7 +89,7 @@ namespace NakamaWebRTCDemo
                 if (nakamaSocketConnecting) return;
                 nakamaSocketConnecting = true;
 
-                NakamaSocket = Socket.From(client, new WebSocketStdlibAdapter());
+                NakamaSocket = Socket.From(client, godotWebSocketAdapter);
                 await NakamaSocket.ConnectAsync(NakamaSession);
                 nakamaSocketConnecting = false;
                 SocketConnected?.Invoke(NakamaSocket);
@@ -109,7 +107,7 @@ namespace NakamaWebRTCDemo
         {
             try
             {
-                await asyncFunc(NakamaClient);
+                await asyncFunc(nakamaClient);
             }
             catch (Exception e) when (!(e is ApiResponseException))
             {

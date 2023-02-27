@@ -85,47 +85,6 @@ namespace NakamaWebRTC
         public Dictionary<string, double> numericProperties = null;
         public int? countMultiple = null;
     }
-
-    public class Player : IBufferSerializable
-    {
-        public string SessionID { get; set; }
-        public string Username { get; set; }
-        public int PeerID { get; set; }
-
-        public Player() { }
-
-        public Player(string sessionID, string username, int peerID)
-        {
-            SessionID = sessionID;
-            Username = username;
-            PeerID = peerID;
-        }
-
-        public static Player FromPresence(IUserPresence presence, int peerID)
-        {
-            return new Player(presence.SessionId, presence.Username, peerID);
-        }
-
-        public static Player FromLocal(string username, int peerID)
-        {
-            // We don't use sessionID if the player is local
-            return new Player("", username, peerID);
-        }
-
-        public void Serialize(StreamPeerBuffer buffer)
-        {
-            buffer.PutString(SessionID);
-            buffer.PutString(Username);
-            buffer.Put32(PeerID);
-        }
-
-        public void Deserialize(StreamPeerBuffer buffer)
-        {
-            SessionID = buffer.GetString();
-            Username = buffer.GetString();
-            PeerID = buffer.Get32();
-        }
-    }
     #endregion
 
     public class OnlineMatch : Node
@@ -205,12 +164,7 @@ namespace NakamaWebRTC
         private Dictionary<string, Player> sessionIDToPlayers = new Dictionary<string, Player>();
         private int nextPeerID;
         #endregion
-
-        #region Misc
-        // Used to suppress Nakama events until match is created
-        private bool isMatchCreated = false;
-        #endregion
-
+        
         #region Readonly Vars
         public MatchMode MatchMode { get; private set; } = MatchMode.None;
         public MatchState MatchState { get; private set; } = MatchState.Lobby;
@@ -287,7 +241,7 @@ namespace NakamaWebRTC
             /// Session ID of target player
             /// </summary>
             public string Target { get; set; }
-            public object[] Arguments { get; set; } = null;
+            public object[] Arguments { get; set; } = new object[0];
 
             public T GetArg<T>(int index)
             {
@@ -461,7 +415,6 @@ namespace NakamaWebRTC
 
         public async void CreateMatch(ISocket nakamaSocket)
         {
-            isMatchCreated = false;
             await Leave();
             NakamaSocket = nakamaSocket;
             MatchMode = MatchMode.Create;
@@ -659,16 +612,10 @@ namespace NakamaWebRTC
             MatchCreated?.Invoke(MatchID);
             PlayerJoined?.Invoke(myPlayer);
             PlayerStatusChanged?.Invoke(myPlayer, PlayerStatus.Connected);
-            isMatchCreated = true;
         }
 
         private async void OnNakamaMatchPresence(IMatchPresenceEvent presence)
         {
-            if (MatchMode == MatchMode.Create && !isMatchCreated)
-            {
-                // Suppresss presecence updates until the match is created
-                return;
-            }
             GD.Print($"{nameof(OnNakamaMatchPresence)}");
             // Handle joining
             foreach (var user in presence.Joins)
@@ -772,6 +719,7 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
+
             GD.Print($"{nameof(OnNakamaMatchJoined)}: {match.Self}");
 
             if (MatchMode == MatchMode.Join)

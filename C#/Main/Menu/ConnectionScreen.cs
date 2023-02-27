@@ -70,8 +70,11 @@ namespace NakamaWebRTCDemo
             }
 
             tabContainer.CurrentTab = 0;
+
+            if (email != "" && password != "")
+                Login();
         }
-        
+
         private async void Login(bool saveCredentials = false)
         {
             Visible = false;
