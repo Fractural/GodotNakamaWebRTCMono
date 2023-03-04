@@ -129,6 +129,7 @@ namespace NakamaWebRTCDemo
             gameSession.RoundFinished += OnRoundFinished;
             gameSession.SessionStopped += OnSessionStopped;
             lobbyScreen.ReadyButtonPressed += OnReadyButtonPressed;
+            // TODO NOW: Figure out why desyncing occurs
         }
 
         private void ReleaseEvents()
