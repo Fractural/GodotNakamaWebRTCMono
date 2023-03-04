@@ -34,7 +34,9 @@ namespace NakamaWebRTCDemo
         private Game game;
 
         public List<GameSessionPlayer> GameSessionPlayers { get; private set; } = new List<GameSessionPlayer>();
-        public Action RoundOverActionOverride { get; set; }
+        // bool isMatchOver
+        public event Action<bool> RoundFinished;
+        public event Action SessionStopped;
 
         [OnReady]
         public void RealReady()
@@ -57,21 +59,6 @@ namespace NakamaWebRTCDemo
             }
         }
 
-        // Ran on everyone
-        //
-        // initializedPlayers is only set the first time the session is started.
-        // Afterwords, we maintain the GameSessionPlayers list using
-        // RemovePlayer calls made from OnlineGame.
-        public void StartSession(List<Player> intializedPlayers = null)
-        {
-            if (intializedPlayers != null)
-                GameSessionPlayers = intializedPlayers.Select(x => new GameSessionPlayer()
-                {
-                    Player = x
-                }).ToList();
-            StartGame();
-        }
-
         public void Reset()
         {
             GameSessionPlayers.Clear();
@@ -83,14 +70,28 @@ namespace NakamaWebRTCDemo
             return GameSessionPlayers.Find(x => x.Player.PeerID == playerID);
         }
 
+        public void AddPlayers(IEnumerable<Player> players)
+        {
+            foreach (var player in players)
+                AddPlayer(player);
+        }
+
+        public void AddPlayer(Player player)
+        {
+            GameSessionPlayers.Add(new GameSessionPlayer()
+            {
+                Player = player
+            });
+        }
+
         public void RemovePlayer(Player player)
         {
             game.RemovePlayer(player);
             GameSessionPlayers.RemoveAll(x => x.Player == player);
         }
 
-        // Called on everyone
-        private void StartGame()
+        // Ran on everyone
+        public void StartGame()
         {
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
@@ -98,19 +99,13 @@ namespace NakamaWebRTCDemo
             game.LoadAndStartGame(GameSessionPlayers.Select(x => x.Player).ToList());
         }
 
-        private async void StopSession()
+        public void StopSession()
         {
-            game.StopGame();
-            if (GameState.Global.OnlinePlay)
-            {
-                await OnlineMatch.Global.Leave();
-                uiLayer.ShowScreen(nameof(MatchScreen));
-            }
-            else
-                uiLayer.ShowScreen(nameof(TitleScreen));
+            Reset();
+            SessionStopped?.Invoke();
         }
 
-        private void RestartGame()
+        public void RestartGame()
         {
             game.StopGame();
             StartGame();
@@ -136,24 +131,20 @@ namespace NakamaWebRTCDemo
 
         private void OnGameOver(int winningPlayerID)
         {
-            if (!GameState.Global.OnlinePlay)
-            {
-                // Local games only have rounds and no matches
-                ShowResults(winningPlayerID);
-            }
-            else if (GetTree().IsNetworkServer())
-            {
-                var winningSessionPlayer = GetSessionPlayer(winningPlayerID);
-                winningSessionPlayer.Score += 1;
-                bool isMatchOver = winningSessionPlayer.Score >= WinningScore;
-                Rpc(nameof(ShowResults), winningPlayerID, winningSessionPlayer.Score, isMatchOver);
-            }
+            var winningSessionPlayer = GetSessionPlayer(winningPlayerID);
+            winningSessionPlayer.Score += 1;
+
+            bool isMatchOver = winningSessionPlayer.Score >= WinningScore;
+            this.TryRpc(nameof(ShowResults), winningPlayerID, winningSessionPlayer.Score, isMatchOver);
         }
 
+        // Called on everyone
         [RemoteSync]
         private async void ShowResults(int playerID = 0, int score = 0, bool isMatchOver = false)
         {
             var winningSessionPlayer = GetSessionPlayer(playerID);
+            winningSessionPlayer.Score = score;
+
             if (isMatchOver)
                 uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins the whole match!", 4f);
             else
@@ -161,30 +152,7 @@ namespace NakamaWebRTCDemo
 
             await ToSignal(GetTree().CreateTimer(2.0f), "timeout");
 
-            if (GameState.Global.OnlinePlay)
-            {
-                if (RoundOverActionOverride != null)
-                {
-                    RoundOverActionOverride();
-                    RoundOverActionOverride = null;
-                } else if (isMatchOver)
-                    StopSession();
-                else
-                {
-                    // We must synchronize our winning session player to that of the server's
-                    if (!GetTree().IsNetworkServer())
-                        winningSessionPlayer.Score = score;
-
-                    uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-                    {
-                        GameSessionPlayers = GameSessionPlayers
-                    });
-                }
-            }
-            else
-            {
-                RestartGame();
-            }
+            RoundFinished?.Invoke(isMatchOver);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace NakamaWebRTCDemo
 
         public override void _PhysicsProcess(float delta)
         {
-            if (!Enabled || !IsNetworkMaster()) return;
+            if (!Enabled || this.TryIsNotNetworkMaster()) return;
 
             body.MoveAndSlide(Direction * Speed * delta);
 

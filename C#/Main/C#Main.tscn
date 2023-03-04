@@ -8,7 +8,7 @@
 [ext_resource path="res://C#/Main/Menu/UILayer.cs" type="Script" id=6]
 [ext_resource path="res://C#/Autoload/OnlineErrorHandler.cs" type="Script" id=7]
 [ext_resource path="res://C#/Main/Systems/GameSession.cs" type="Script" id=8]
-[ext_resource path="res://C#/Main/Systems/OnlineGame.cs" type="Script" id=12]
+[ext_resource path="res://C#/Main/Systems/LobbyOnlineGame.cs" type="Script" id=9]
 [ext_resource path="res://C#/Main/Systems/LocalGame.cs" type="Script" id=13]
 
 [node name="MainScene" type="Node2D"]
@@ -34,9 +34,9 @@ LocalGamePath = NodePath("../../../GameSession/LocalGame")
 [node name="ConnectionScreen" parent="UILayer/Screens" instance=ExtResource( 3 )]
 
 [node name="MatchScreen" parent="UILayer/Screens" instance=ExtResource( 4 )]
+OnlineGamePath = NodePath("../../../GameSession/LobbyOnlineGame")
 
 [node name="LobbyScreen" parent="UILayer/Screens" instance=ExtResource( 2 )]
-OnlineGamePath = NodePath("../../../GameSession/OnlineGame")
 lobbyPlayerPrefab = null
 
 [node name="Overlay" type="Control" parent="UILayer"]
@@ -70,8 +70,9 @@ script = ExtResource( 8 )
 UiLayerPath = NodePath("../UILayer")
 GamePath = NodePath("../Game")
 
-[node name="OnlineGame" type="Node" parent="GameSession"]
-script = ExtResource( 12 )
+[node name="LobbyOnlineGame" type="Node" parent="GameSession"]
+script = ExtResource( 9 )
+LobbyScreenPath = NodePath("../../UILayer/Screens/LobbyScreen")
 GameSessionPath = NodePath("..")
 UiLayerPath = NodePath("../../UILayer")
 

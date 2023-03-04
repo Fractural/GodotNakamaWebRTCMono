@@ -10,6 +10,8 @@ namespace NakamaWebRTCDemo
     public partial class MatchScreen : Screen
     {
         [OnReadyGet]
+        private IOnlineGame onlineGame;
+        [OnReadyGet]
         private SpinBox matchmakerPlayerCountSpinbox;
         [OnReadyGet]
         private LineEdit joinMatchIDControl;
@@ -117,11 +119,7 @@ namespace NakamaWebRTCDemo
         private void OnMatchmakerMatched(IReadOnlyCollection<Player> players)
         {
             uiLayer.HideMessage();
-            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-            {
-                Players = players,
-                JustJoinedMatch = true,
-            });
+            onlineGame.MatchmakerMatched(players);
         }
 
         private void CreateMatch()
@@ -131,11 +129,7 @@ namespace NakamaWebRTCDemo
 
         private void OnMatchCreated(string matchID)
         {
-            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-            {
-                MatchID = matchID,
-                JustJoinedMatch = true,
-            });
+            onlineGame.MatchCreated(matchID);
         }
 
         private void JoinMatch()
@@ -154,11 +148,7 @@ namespace NakamaWebRTCDemo
 
         private void OnMatchJoined(string matchID)
         {
-            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-            {
-                MatchID = matchID,
-                JustJoinedMatch = true,
-            });
+            onlineGame.MatchJoined(matchID);
         }
 
         private void OnPasteButtonPressed()

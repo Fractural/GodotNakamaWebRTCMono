@@ -73,5 +73,15 @@ namespace NakamaWebRTCDemo
             }
             return null;
         }
+
+        public static bool TryIsNetworkMaster(this Node node)
+        {
+            return GameState.Global.OnlinePlay && node.IsNetworkMaster();
+        }
+
+        public static bool TryIsNotNetworkMaster(this Node node)
+        {
+            return GameState.Global.OnlinePlay && !node.IsNetworkMaster();
+        }
     }
 }

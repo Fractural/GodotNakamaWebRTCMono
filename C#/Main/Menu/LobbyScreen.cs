@@ -14,16 +14,10 @@ namespace NakamaWebRTCDemo
             public IReadOnlyCollection<Player> Players { get; set; }
             public IReadOnlyCollection<GameSessionPlayer> GameSessionPlayers { get; set; }
             public string MatchID { get; set; }
-            // True when the user just created/joined the match and went into this lobby
-            // Used for first time setup stuff, such as resetting the OnlineGame nodes on
-            // all players.
-            public bool JustJoinedMatch { get; set; } = false;
         }
 
         public List<LobbyPlayer> LobbyPlayers { get; private set; } = new List<LobbyPlayer>();
 
-        [OnReadyGet]
-        private OnlineGame onlineGame;
         [OnReadyGet]
         private Button readyButton;
         [OnReadyGet]
@@ -37,34 +31,15 @@ namespace NakamaWebRTCDemo
         [Export]
         private PackedScene lobbyPlayerPrefab;
 
+        public event Action ReadyButtonPressed;
+
         [OnReady]
         public void RealReady()
         {
             ClearLobbyPlayers();
 
-            OnlineMatch.Global.PlayerJoined += OnPlayerJoined;
-            OnlineMatch.Global.PlayerLeft += OnPlayerLeft;
-            OnlineMatch.Global.PlayerStatusChanged += OnPlayerStatusChanged;
-            OnlineMatch.Global.MatchReady += OnMatchReady;
-            OnlineMatch.Global.MatchNotReady += OnMatchNotReady;
-
             readyButton.Connect("pressed", this, nameof(OnReadyButtonPressed));
             copyMatchIDButton.Connect("pressed", this, nameof(OnCopyMatchIDButtonPressed));
-        }
-
-        public override void _Notification(int what)
-        {
-            if (what == NotificationPredelete)
-            {
-                if (OnlineMatch.Global != null)
-                {
-                    OnlineMatch.Global.PlayerJoined -= OnPlayerJoined;
-                    OnlineMatch.Global.PlayerLeft -= OnPlayerLeft;
-                    OnlineMatch.Global.PlayerStatusChanged -= OnPlayerStatusChanged;
-                    OnlineMatch.Global.MatchReady -= OnMatchReady;
-                    OnlineMatch.Global.MatchNotReady -= OnMatchNotReady;
-                }
-            }
         }
 
         public override void ShowScreen(object args)
@@ -89,11 +64,6 @@ namespace NakamaWebRTCDemo
                     players = castedArgs.Players;
                 if (castedArgs.MatchID != null)
                     matchID = castedArgs.MatchID;
-                if (castedArgs.JustJoinedMatch)
-                {
-                    GameState.Global.OnlinePlay = true;
-                    onlineGame.Reset();
-                }
             }
 
             ClearLobbyPlayers();
@@ -145,7 +115,7 @@ namespace NakamaWebRTCDemo
             readyButton.Disabled = true;
         }
 
-        private LobbyPlayer AddLobbyPlayer(GameSessionPlayer sessionPlayer)
+        public LobbyPlayer AddLobbyPlayer(GameSessionPlayer sessionPlayer)
         {
             if (!LobbyPlayers.Any(x => x.Player == sessionPlayer.Player))
             {
@@ -158,7 +128,7 @@ namespace NakamaWebRTCDemo
             return null;
         }
 
-        private LobbyPlayer AddLobbyPlayer(Player player)
+        public LobbyPlayer AddLobbyPlayer(Player player)
         {
             if (!LobbyPlayers.Any(x => x.Player == player))
             {
@@ -171,7 +141,7 @@ namespace NakamaWebRTCDemo
             return null;
         }
 
-        private void RemovePlayer(Player player)
+        public void RemovePlayer(Player player)
         {
             LobbyPlayer lobbyPlayer = LobbyPlayers.Find(x => x.Player == player);
             if (lobbyPlayer != null)
@@ -191,77 +161,21 @@ namespace NakamaWebRTCDemo
             return LobbyPlayers.Find(x => x.Player == player);
         }
 
-        private void SetReadyButtonEnabled(bool enabled)
+        public void SetReadyButtonEnabled(bool enabled)
         {
             readyButton.Disabled = !enabled;
             if (enabled)
                 readyButton.GrabFocus();
         }
 
-        [RemoteSync]
-        private void PlayerReady(int peerID)
-        {
-            var lobbyPlayer = GetLobbyPlayer(peerID);
-
-            lobbyPlayer.Status = LobbyPlayerStatus.Readied;
-
-            // As host, start the game if everyone is readied
-            if (GetTree().IsNetworkServer())
-            {
-                if (LobbyPlayers.All(x => x.Status == LobbyPlayerStatus.Readied))
-                    onlineGame.StartGame();
-            }
-        }
-
         private void OnReadyButtonPressed()
         {
-            Rpc(nameof(PlayerReady), GetTree().NetworkPeer.GetUniqueId());
+            ReadyButtonPressed?.Invoke();
         }
 
         private void OnCopyMatchIDButtonPressed()
         {
             OS.Clipboard = matchIDLineEdit.Text;
         }
-
-        #region OnlineMatch
-        private void OnPlayerJoined(Player player) => AddLobbyPlayer(player);
-
-        private void OnPlayerLeft(Player player) => RemovePlayer(player);
-
-        private void OnMatchNotReady() => SetReadyButtonEnabled(false);
-
-        private void OnMatchReady(IReadOnlyCollection<Player> players) => SetReadyButtonEnabled(true);
-
-        private void OnPlayerStatusChanged(Player player, PlayerStatus status)
-        {
-            var lobbyPlayer = GetLobbyPlayer(player);
-            if (status == PlayerStatus.Connected)
-            {
-                // Note that we might get a race condition where
-                // the WebRTC connections are conected first, before
-                // Nakama's player status change messages has had the
-                // chance to arrive.
-
-                // If WebRTC connection is made (leading to READY!),
-                // we keep it as ready, since all players are connected.
-                if (lobbyPlayer.Status != LobbyPlayerStatus.Readied)
-                    lobbyPlayer.Status = LobbyPlayerStatus.Connected;
-
-                // As host, notify player about readied players
-                if (GetTree().IsNetworkServer())
-                {
-                    foreach (var currLobbyPlayer in LobbyPlayers)
-                    {
-                        if (currLobbyPlayer.Status == LobbyPlayerStatus.Readied)
-                            RpcId(player.PeerID, nameof(PlayerReady), currLobbyPlayer.Player.PeerID);
-                    }
-                }
-            }
-            else if (status == PlayerStatus.Connecting)
-            {
-                lobbyPlayer.Status = LobbyPlayerStatus.Connecting;
-            }
-        }
-        #endregion
     }
 }

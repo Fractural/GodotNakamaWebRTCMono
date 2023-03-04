@@ -125,7 +125,7 @@ namespace NakamaWebRTCDemo
         // Actually start the game
         // RemoteSync calls the method on the caller and all other peers.
         [RemoteSync]
-        public void StartGame()
+        private void StartGame()
         {
             OnGameStarted?.Invoke();
             GetTree().Paused = false;

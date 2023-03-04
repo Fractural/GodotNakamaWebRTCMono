@@ -21,7 +21,7 @@ namespace NakamaWebRTCDemo
 
         public async void Use()
         {
-            if (!CanUse || !Enabled || !IsNetworkMaster())
+            if (!CanUse || !Enabled || this.TryIsNotNetworkMaster())
                 return;
             CanUse = false;
 
@@ -30,7 +30,7 @@ namespace NakamaWebRTCDemo
             foreach (Node body in GetOverlappingBodies())
                 if (body is GamePlayer player && player != owner && !player.IsDead)
                     player.TryRpc(RpcType.Local, nameof(player.Kill));
-            // TODO NOW:
+
             await ToSignal(GetTree().CreateTimer(Cooldown), "timeout");
             CanUse = true;
         }

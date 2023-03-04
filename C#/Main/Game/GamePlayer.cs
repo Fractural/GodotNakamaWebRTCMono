@@ -16,7 +16,7 @@ namespace NakamaWebRTCDemo
         public IAttack Attack { get; private set; }
         [OnReadyGet]
         public PlayerInput Input { get; private set; }
-        
+
         [OnReadyGet]
         private CollisionShape2D collider;
         [OnReadyGet]
@@ -53,6 +53,7 @@ namespace NakamaWebRTCDemo
             if (GameState.Global.OnlinePlay)
                 SetNetworkMaster(player.PeerID);
             usernameLabel.Text = player.Username;
+            Name = player.Username;
         }
 
         [RemoteSync]
