@@ -28,7 +28,7 @@ namespace NakamaWebRTCDemo
         private void UpdateRemoteBody(Vector2 position)
         {
             body.GlobalPosition = position;
-            GD.Print("UpdateRemoteBody for peer " + this.GetNetworkMaster() + " with client: " + this.GetTree().GetNetworkUniqueId());
+            //GD.Print("UpdateRemoteBody for peer " + this.GetNetworkMaster() + " with client: " + this.GetTree().GetNetworkUniqueId());
         }
     }
 }

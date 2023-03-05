@@ -128,7 +128,7 @@ GameState="*res://C#/Autoload/GameState.cs"
 
 [debug]
 
-multirun/number_of_windows=2
+multirun/number_of_windows=3
 multirun/window_distance=1270
 multirun/add_custom_args=true
 multirun/first_window_args="listen"

@@ -198,15 +198,15 @@ namespace NakamaWebRTC
             [ErrorCode.WebRTCOfferError] = "Unable to create WebRTC offer",
         };
         public IReadOnlyCollection<string> SessionIDs => sessionIDToPlayers.Keys;
-        public IReadOnlyCollection<Player> Players
-        {
-            get
-            {
-                var values = sessionIDToPlayers.Values.ToArray();
-                Array.Sort(values, (p1, p2) => p1.PeerID - p2.PeerID);
-                return values;
-            }
-        }
+        public IReadOnlyCollection<Player> Players => sessionIDToPlayers.Values;
+        //{
+        //    get
+        //    {
+        //        var values = sessionIDToPlayers.Values.ToArray();
+        //        Array.Sort(values, (p1, p2) => p1.PeerID - p2.PeerID);
+        //        return values;
+        //    }
+        //}
         #endregion
         #endregion
 
@@ -509,7 +509,7 @@ namespace NakamaWebRTC
 
         public void StartPlaying()
         {
-            Debug.Assert(MatchState == MatchState.Ready);
+            Debug.Assert(MatchState == MatchState.Playing || MatchState == MatchState.Ready);
             MatchState = MatchState.Playing;
         }
 
@@ -532,6 +532,11 @@ namespace NakamaWebRTC
                 PlayerJoined?.Invoke(player);
                 UpdateAndEmitPlayerStatus(player, player.Status);
             }
+            
+            if (Players.Count >= MinPlayers)
+                MatchReady?.Invoke(Players);
+            else
+                MatchNotReady?.Invoke();
         }
 
         public async Task Leave(bool closeSocket = false)
@@ -566,7 +571,6 @@ namespace NakamaWebRTC
             nextPeerID = 1;
             MatchState = MatchState.None;
             MatchMode = MatchMode.None;
-            GD.Print($"{nameof(Leave)}: Leaving");
         }
         #endregion
 
@@ -652,6 +656,7 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
+            
             GD.Print("OnNakamaMatchCreated " + match.Self + " || " + MySessionID);
             Player myPlayer = Player.FromPresence(match.Self, 1);
             sessionIDToPlayers[MySessionID] = myPlayer;
@@ -661,6 +666,7 @@ namespace NakamaWebRTC
             GetTree().NetworkPeer = webrtcMultiplayer;
 
             MatchCreated?.Invoke(MatchID);
+
             // NOTE: We have to emit player joined here to populate the lobby wit the creator
             //       We don't do this for matchmaking because we actually directly emit
             //       the players in the match when MatchmakerMatched.
@@ -687,6 +693,7 @@ namespace NakamaWebRTC
                             Player newPlayer = Player.FromPresence(user, nextPeerID);
                             nextPeerID++;
                             sessionIDToPlayers[user.SessionId] = newPlayer;
+
                             PlayerJoined?.Invoke(newPlayer);
 
                             // Tell other players we've joined. This will also trigger those

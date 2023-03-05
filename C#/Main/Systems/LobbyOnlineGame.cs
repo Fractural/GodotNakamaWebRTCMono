@@ -28,7 +28,6 @@ namespace NakamaWebRTCDemo
         private GameSession gameSession;
         [OnReadyGet]
         private UILayer uiLayer;
-        private bool hasGameStarted = false;
 
         #region Public API
         public override void _Notification(int what)
@@ -49,6 +48,7 @@ namespace NakamaWebRTCDemo
         {
             Reset();
             InitEvents();
+            GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
@@ -60,6 +60,7 @@ namespace NakamaWebRTCDemo
         {
             Reset();
             InitEvents();
+            GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
@@ -71,6 +72,7 @@ namespace NakamaWebRTCDemo
         {
             Reset();
             InitEvents();
+            GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
@@ -85,11 +87,7 @@ namespace NakamaWebRTCDemo
         private void StartGameEveryone()
         {
             State = StateType.Playing;
-            if (!hasGameStarted)
-            {
-                hasGameStarted = true;
-                OnlineMatch.Global.StartPlaying();
-            }
+            OnlineMatch.Global.StartPlaying();
             gameSession.StartGame();
             GD.Print("LobbyOnlineGame, Starting game");
         }
@@ -97,12 +95,12 @@ namespace NakamaWebRTCDemo
         // Ran on everyone when they first join/create a lobby
         private void Reset()
         {
-            hasGameStarted = false;
             gameSession.Reset();
         }
 
         private void ReopenMatch()
         {
+            GD.Print("Reopening match");
             Reset();
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
@@ -116,6 +114,7 @@ namespace NakamaWebRTCDemo
         #region Event Subscriptions
         private void InitEvents()
         {
+            GD.Print("Init Events");
             OnlineMatch.Global.AllowJoiningMidMatch = false;
             OnlineMatch.Global.OnError += OnOnlineMatchError;
             OnlineMatch.Global.Disconnected += OnOnlineMatchDisconnected;
@@ -138,7 +137,7 @@ namespace NakamaWebRTCDemo
             {
                 OnlineMatch.Global.OnError -= OnOnlineMatchError;
                 OnlineMatch.Global.Disconnected -= OnOnlineMatchDisconnected;
-                OnlineMatch.Global.PlayerLeft += OnPlayerJoined;
+                OnlineMatch.Global.PlayerJoined -= OnPlayerJoined;
                 OnlineMatch.Global.PlayerLeft -= OnPlayerLeft;
                 OnlineMatch.Global.MatchReady -= OnMatchReady;
                 OnlineMatch.Global.MatchNotReady -= OnMatchNotReady;
@@ -205,6 +204,7 @@ namespace NakamaWebRTCDemo
         // Leave should reset everything
         private void OnLeave()
         {
+            GD.Print("Release events");
             GameState.Global.OnlinePlay = false;
             ReleaseEvents();
             Reset();
@@ -226,6 +226,7 @@ namespace NakamaWebRTCDemo
 
         private void OnPlayerJoined(Player player)
         {
+            GD.Print(nameof(OnPlayerJoined) + ": " + player.PeerID);
             gameSession.AddPlayer(player);
             lobbyScreen.AddLobbyPlayer(player);
         }

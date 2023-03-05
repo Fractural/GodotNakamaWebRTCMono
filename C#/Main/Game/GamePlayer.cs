@@ -52,7 +52,7 @@ namespace NakamaWebRTCDemo
             // Note that SetNetworkMaster is recursive by default
             if (GameState.Global.OnlinePlay)
                 SetNetworkMaster(player.PeerID);
-            usernameLabel.Text = player.Username;
+            usernameLabel.Text = $"{player.Username} [{player.PeerID}]";
             Name = player.PeerID.ToString();
         }
 

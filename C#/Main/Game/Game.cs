@@ -65,6 +65,9 @@ namespace NakamaWebRTCDemo
             map = mapPrefab.Instance<Node2D>();
             AddChild(map);
 
+            players.Sort((p1, p2) => p1.PeerID - p2.PeerID);
+            GD.Print("Players: " + players + "UniqueID: " + GetTree().GetNetworkUniqueId());
+
             // Respawn players
             // Note that we need a playerIdx counter to assign spawn positions, since we cannot rely on
             // PeerID to be < total # of players. If people keep joining/leaving a match, this could
@@ -92,6 +95,7 @@ namespace NakamaWebRTCDemo
             if (GameState.Global.OnlinePlay)
             {
                 var myGamePlayer = GetGamePlayer(GetTree().GetNetworkUniqueId());
+                GD.Print("Setting manual controls for player " + myGamePlayer.Player.PeerID);
                 myGamePlayer.Input.Mode = PlayerInput.ModeEnum.Control;
                 myGamePlayer.Input.InputPrefix = $"player1_";
                 // Tell server we've succesfully setup the game
@@ -136,6 +140,7 @@ namespace NakamaWebRTCDemo
             HasGameStarted = false;
             if (map != null)
                 map.QueueFree();
+            map = null;
             foreach (Node child in playerContainer.GetChildren())
                 child.QueueFree();
             GamePlayers.Clear();

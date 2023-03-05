@@ -78,6 +78,7 @@ namespace NakamaWebRTCDemo
 
         public void AddPlayer(Player player)
         {
+            GD.Print("Game Sesesion add player with peerID: " + player.PeerID);
             GameSessionPlayers.Add(new GameSessionPlayer()
             {
                 Player = player
@@ -93,6 +94,7 @@ namespace NakamaWebRTCDemo
         // Ran on everyone
         public void StartGame()
         {
+            GD.Print($"Start game with {string.Join(",", GameSessionPlayers)}");
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
             // we can still continue with the remaining 
