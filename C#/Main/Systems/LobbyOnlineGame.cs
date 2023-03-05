@@ -50,8 +50,11 @@ namespace NakamaWebRTCDemo
             InitEvents();
             GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
-            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-            { });
+            uiLayer.ShowScreen(nameof(LobbyScreen));
+            // Join all the players in this match so they can be added to 
+            // the gameSession and the lobbyScreen
+            foreach (var player in players)
+                OnPlayerJoined(player);
         }
 
         public void MatchCreated(string matchID)
@@ -87,23 +90,44 @@ namespace NakamaWebRTCDemo
             State = StateType.Playing;
             OnlineMatch.Global.StartPlaying();
             gameSession.StartGame();
-            GD.Print("LobbyOnlineGame, Starting game");
+            Console.Print("LobbyOnlineGame, Starting game");
         }
 
         // Ran on everyone when they first join/create a lobby
         private void Reset()
         {
+            State = StateType.None;
             gameSession.Reset();
+        }
+
+        private bool EndMatchmakerMatchIfBelowMinPlayerCount()
+        {
+            Console.Print("Try end matchmaker match?");
+            if (OnlineMatch.Global.MatchMode == MatchMode.Matchmaker && OnlineMatch.Global.IsBelowMinPlayers)
+            {
+                Console.Print("  Matchmaker match ended");
+                // Don't bother reopening match, just end it
+                gameSession.StopSession();
+                return true;
+            }
+            return false;
         }
 
         private void ReopenMatch()
         {
-            GD.Print("Reopening match");
-            uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
+            Console.Print("Reopening match");
+            uiLayer.HideMessage();
+
+            if (EndMatchmakerMatchIfBelowMinPlayerCount()) return;
+
+            var args = new LobbyScreen.Args() { GameSessionPlayers = gameSession.GameSessionPlayers };
+            if (OnlineMatch.Global.MatchMode != MatchMode.Matchmaker)
             {
-                MatchID = OnlineMatch.Global.MatchID,
-                GameSessionPlayers = gameSession.GameSessionPlayers
-            });
+                // Show MatchID if we're in a custom match to let more people join
+                args.MatchID = OnlineMatch.Global.MatchID;
+            }
+                
+            uiLayer.ShowScreen(nameof(LobbyScreen), args);
             foreach (var lobbyPlayer in lobbyScreen.LobbyPlayers)
                 lobbyPlayer.Status = LobbyPlayerStatus.Connected;
             OnlineMatch.Global.ReopenMatch();
@@ -113,7 +137,6 @@ namespace NakamaWebRTCDemo
         #region Event Subscriptions
         private void InitEvents()
         {
-            GD.Print("Init Events");
             OnlineMatch.Global.AllowJoiningMidMatch = false;
             OnlineMatch.Global.OnError += OnOnlineMatchError;
             OnlineMatch.Global.Disconnected += OnOnlineMatchDisconnected;
@@ -127,7 +150,6 @@ namespace NakamaWebRTCDemo
             gameSession.RoundFinished += OnRoundFinished;
             gameSession.SessionStopped += OnSessionStopped;
             lobbyScreen.ReadyButtonPressed += OnReadyButtonPressed;
-            // TODO NOW: Figure out why desyncing occurs
         }
 
         private void ReleaseEvents()
@@ -172,14 +194,15 @@ namespace NakamaWebRTCDemo
             ServerStartIfReady();
         }
 
-        private void ServerStartIfReady()
+        private bool ServerStartIfReady()
         {
             // As host, start the game if everyone is readied
-            if (GetTree().IsNetworkServer())
+            if (GetTree().IsNetworkServer() && lobbyScreen.LobbyPlayers.All(x => x.Status == LobbyPlayerStatus.Readied))
             {
-                if (lobbyScreen.LobbyPlayers.All(x => x.Status == LobbyPlayerStatus.Readied))
-                    StartGame();
+                StartGame();
+                return true;
             }
+            return false;
         }
 
         // Called on everyone
@@ -191,6 +214,7 @@ namespace NakamaWebRTCDemo
                 return;
             }
 
+            Console.Print("Setting state to lobby");
             State = StateType.Lobby;
 
             // Reopen match once the round is finished. It's easier to let people join the lobby
@@ -208,7 +232,6 @@ namespace NakamaWebRTCDemo
         // Leave should reset everything
         private void OnLeave()
         {
-            GD.Print("Release events");
             GameState.Global.OnlinePlay = false;
             ReleaseEvents();
             Reset();
@@ -245,7 +268,10 @@ namespace NakamaWebRTCDemo
             lobbyScreen.RemovePlayer(player);
 
             if (State == StateType.Lobby)
-                ServerStartIfReady();
+            {
+                if (EndMatchmakerMatchIfBelowMinPlayerCount()) return;
+                if (ServerStartIfReady()) return;
+            }
         }
 
         private void OnMatchNotReady() => lobbyScreen.SetReadyButtonEnabled(false);

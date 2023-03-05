@@ -102,8 +102,7 @@ namespace NakamaWebRTCDemo
         // Ran on everyone
         public void StartGame()
         {
-            game.StopGame();
-            GD.Print($"Start game with {string.Join(",", GameSessionPlayers)}");
+            Console.Print($"Start game with {string.Join(",", GameSessionPlayers)}");
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
             // we can still continue with the remaining 
@@ -131,13 +130,16 @@ namespace NakamaWebRTCDemo
         public void Deserialize(StreamPeerBuffer buffer)
         {
             int count = buffer.Get32();
+            Console.Print("GameSession Deserialize: {");
             for (int i = 0; i < count; i++)
             {
                 int peerID = buffer.Get32();
                 int score = buffer.Get32();
                 
                 GetSessionPlayer(peerID).Score = score;
+                Console.Print($"  --> [{peerID}] = {score}");
             }
+            Console.Print("}");
         }
 
         // Called on everyone, since when the host makes the game start,
@@ -151,6 +153,7 @@ namespace NakamaWebRTCDemo
 
         private void OnPlayerDead(int peerID)
         {
+            Console.Print("Player died: " + peerID);
             if (GameState.Global.OnlinePlay)
             {
                 if (GetTree().GetNetworkUniqueId() == peerID)
@@ -171,9 +174,10 @@ namespace NakamaWebRTCDemo
         [RemoteSync]
         private async void ShowResults(int playerID = 0, int score = 0, bool isMatchOver = false)
         {
-            GD.Print("Winning player score: " + score);
+            Console.Print($"Winning player score: [{playerID}] = {score}");
             var winningSessionPlayer = GetSessionPlayer(playerID);
-            winningSessionPlayer.Score = score;
+
+            Console.Print($"Show results with {string.Join(",", GameSessionPlayers)}");
 
             if (isMatchOver)
                 uiLayer.ShowMessage(winningSessionPlayer.Player.Username + " wins the whole match!", 4f);

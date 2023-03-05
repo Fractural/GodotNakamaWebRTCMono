@@ -111,7 +111,7 @@ namespace NakamaWebRTCDemo
             }
             catch (Exception e) when (!(e is ApiResponseException))
             {
-                GD.Print($"{nameof(Online)}: Encountered Exception: {e}");
+                Console.Print($"{nameof(Online)}: Encountered Exception: {e}");
                 // We catch any exception that is not an APIResponseException
                 // APIResponseException is normal behaviour
                 NakamaConnectionError.Invoke(e);

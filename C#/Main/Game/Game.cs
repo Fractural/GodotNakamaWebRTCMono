@@ -18,9 +18,7 @@ namespace NakamaWebRTCDemo
         private Node2D map;
         [OnReadyGet]
         private Node2D playerContainer;
-
-        [Export]
-        public bool HasGameStarted { get; set; } = false;
+        
         [Export]
         public bool IsGameOver { get; set; } = false;
 
@@ -55,18 +53,16 @@ namespace NakamaWebRTCDemo
 
         private void StartSetup(List<Player> players)
         {
-            if (HasGameStarted)
-                StopGame();
+            StopGame();
 
             IsGameOver = false;
-            HasGameStarted = true;
 
             // Reset Map
             map = mapPrefab.Instance<Node2D>();
             AddChild(map);
 
             players.Sort((p1, p2) => p1.PeerID - p2.PeerID);
-            GD.Print("Players: " + players + "UniqueID: " + GetTree().GetNetworkUniqueId());
+            Console.Print("Players: " + players + "UniqueID: " + GetTree().GetNetworkUniqueId());
 
             // Respawn players
             // Note that we need a playerIdx counter to assign spawn positions, since we cannot rely on
@@ -95,7 +91,7 @@ namespace NakamaWebRTCDemo
             if (GameState.Global.OnlinePlay)
             {
                 var myGamePlayer = GetGamePlayer(GetTree().GetNetworkUniqueId());
-                GD.Print("Setting manual controls for player " + myGamePlayer.Player.PeerID);
+                Console.Print("Setting manual controls for player " + myGamePlayer.Player.PeerID);
                 myGamePlayer.Input.Mode = PlayerInput.ModeEnum.Control;
                 myGamePlayer.Input.InputPrefix = $"player1_";
                 // Tell server we've succesfully setup the game
@@ -105,6 +101,13 @@ namespace NakamaWebRTCDemo
             {
                 StartGame();
             }
+
+            Console.Print("Start game with : {");
+            foreach (Node child in playerContainer.GetChildren())
+                Console.Print("  --> " + child.Name);
+            Console.Print("}");
+            
+            return;
         }
 
         // Records when each player has finsihed setup
@@ -121,7 +124,7 @@ namespace NakamaWebRTCDemo
             gamePlayer.IsSetUp = true;
             if (GamePlayers.All(x => x.IsSetUp))
             {
-                GD.Print("All players are ready, calling start game");
+                Console.Print("All players are ready, calling start game");
                 Rpc(nameof(StartGame));
             }
         }
@@ -137,12 +140,14 @@ namespace NakamaWebRTCDemo
 
         public void StopGame()
         {
-            HasGameStarted = false;
             if (map != null)
                 map.QueueFree();
             map = null;
             foreach (Node child in playerContainer.GetChildren())
+            {
+                playerContainer.RemoveChild(child);
                 child.QueueFree();
+            }
             GamePlayers.Clear();
         }
 

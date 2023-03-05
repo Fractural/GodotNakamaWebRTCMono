@@ -51,7 +51,7 @@ namespace NakamaWebRTCDemo
         public void Construct(GameSessionPlayer player, LobbyPlayerStatus status = LobbyPlayerStatus.Connecting)
         {
             SessionPlayer = player;
-            nameLabel.Text = player.Player.Username;
+            nameLabel.Text = $"{player.Player.Username} [{player.Player.PeerID}]";
             Status = status;
 
             UpdateDisplay();
@@ -60,6 +60,7 @@ namespace NakamaWebRTCDemo
         public void UpdateDisplay()
         {
             scoreLabel.Text = SessionPlayer.Score > 0 ? SessionPlayer.Score.ToString() : "";
+            Console.Print($"Updating lobby player [{SessionPlayer.Player.PeerID}] text = {scoreLabel.Text}");
         }
     }
 }

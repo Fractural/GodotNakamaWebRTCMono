@@ -66,7 +66,7 @@ namespace NakamaWebRTCDemo
 
             if (castedArgs?.GameSessionPlayers != null)
             {
-                GD.Print("Using game session players " + string.Join(", ", castedArgs.GameSessionPlayers));
+                Console.Print("Using game session players " + string.Join(", ", castedArgs.GameSessionPlayers));
                 // We have come here as an intermission.
                 // Add game session players.
                 foreach (var sessionPlayer in castedArgs.GameSessionPlayers)

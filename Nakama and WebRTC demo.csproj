@@ -7,4 +7,7 @@
     <PackageReference Include="FracturalGodotCodeGenerator" Version="1.0.0" />
     <PackageReference Include="NakamaClient" Version="3.6.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="C#\Utils\" />
+  </ItemGroup>
 </Project>
