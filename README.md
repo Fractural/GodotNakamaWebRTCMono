@@ -1,5 +1,6 @@
-Godot networking over WebRTC using Nakama as signaling server
-=============================================================
+# Godot Nakama WebRTC
+
+A C# version of [Snopek Game's Nakama WebRTC addon](https://gitlab.com/snopek-games/godot-nakama-webrtc)
 
 Godot's [High-level Multiplayer API](https://docs.godotengine.org/en/stable/tutorials/networking/high_level_multiplayer.html)
 can operate over WebRTC, however, it requires a _signaling server_ to establish
@@ -12,29 +13,23 @@ matchmaking, chat, and [much more](https://heroiclabs.com/).
 This Godot add-on provides some utility code to allow easily setting up those
 connections using Nakama as the signaling server.
 
-Getting Started
----------------
+## Installation
 
-Read the [full tutorial](https://www.snopekgames.com/tutorial/2021/how-use-webrtc-godot-nakama-signalling-server) on SnopekGames.com.
+1. Copy `addons/NakamaWebRTCMono`, `addons/com.heroiclabs.nakama`, `webrtc/` and `webrtc_debug/` directories into your project.
 
-### TL;DR ###
+2. Download the Nakama client as a Nuget package into your C# project.
 
-1. Copy the `addons/`, `webrtc/` and `webrtc_debug/` directories into your project.
+3. Add the `OnlineMatch.cs` singleton (in `addons/NakamaWebRTCMono`) as an [autoload in Godot](https://docs.godotengine.org/en/stable/getting_started/step_by_step/singletons_autoload.html).
 
-2. Add the `Nakama.gd` singleton (in `addons/com.heroiclabs.nakama/`) as an [autoload in Godot](https://docs.godotengine.org/en/stable/getting_started/step_by_step/singletons_autoload.html).
-
-3. Add the `OnlineMatch.gd` singleton (in `addons/nakama-webrtc`) as an autoload as well.
-
-Demo and Template
------------------
+## Demo and Template
 
 This project is a full demo showing how to use this addon, and, in fact, makes
 a pretty good template project to start from.
 
-Download the full source code and import into Godot 3.2.3 to run.
+Download the full source code and import into Godot 3.5 to run.
 
-Run `docker-compose up -d` in the top-level directory of the code to start a
-Nakama instance with the default settings.
+Go into the NakamaServer directory and run  `docker-compose up -d` to start a
+Nakama instance.
 
 In both local and online mode, gamepads are supported, using the XBox A button
 to attack. The keyboard controls are WASD for movement and SPACE for attack.
@@ -42,18 +37,13 @@ to attack. The keyboard controls are WASD for movement and SPACE for attack.
 In local mode, you can control player 2 using the arrow keys and ENTER to
 attack.
 
-Notes:
-https://hackmd.io/DaJ3rTgHQ2-NLtjn9-aXIA?view
+## Credits
 
-Credits
--------
-
+* Snopek Game's Nakama WebRTC addon (MIT License): https://gitlab.com/snopek-games/godot-nakama-webrtc
 * Official GDScript Nakama client (Apache License 2.0): https://github.com/heroiclabs/nakama-godot
 * GDNative WebRTC plugin (MIT License): https://github.com/godotengine/webrtc-native
-* Font used in demo (CC0 1.0 License): https://datagoblin.itch.io/monogram
 
-License
--------
+## License
 
 Aside from the pieces listed under Credits above (which each have their own
 licenses), everything else in this project is licensed under the MIT License.
