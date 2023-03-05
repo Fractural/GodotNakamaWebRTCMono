@@ -23,7 +23,7 @@ jobs:
         env:
           REPO: self
           BRANCH: release
-          FOLDER: addons/FracturalVNE
+          FOLDER: addons/NakamaWebRTCMono
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release
