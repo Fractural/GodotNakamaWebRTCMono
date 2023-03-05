@@ -53,7 +53,7 @@ namespace NakamaWebRTCDemo
             if (GameState.Global.OnlinePlay)
                 SetNetworkMaster(player.PeerID);
             usernameLabel.Text = player.Username;
-            Name = player.Username;
+            Name = player.PeerID.ToString();
         }
 
         [RemoteSync]

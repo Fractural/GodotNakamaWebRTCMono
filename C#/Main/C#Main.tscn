@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=2]
+[gd_scene load_steps=12 format=2]
 
 [ext_resource path="res://C#/Main/Menu/TitleScreen.tscn" type="PackedScene" id=1]
 [ext_resource path="res://C#/Main/Menu/LobbyScreen.tscn" type="PackedScene" id=2]
@@ -9,6 +9,7 @@
 [ext_resource path="res://C#/Autoload/OnlineErrorHandler.cs" type="Script" id=7]
 [ext_resource path="res://C#/Main/Systems/GameSession.cs" type="Script" id=8]
 [ext_resource path="res://C#/Main/Systems/LobbyOnlineGame.cs" type="Script" id=9]
+[ext_resource path="res://C#/Autoload/OnlineMatchErrorHandler.cs" type="Script" id=10]
 [ext_resource path="res://C#/Main/Systems/LocalGame.cs" type="Script" id=13]
 
 [node name="MainScene" type="Node2D"]
@@ -85,3 +86,7 @@ UiLayerPath = NodePath("../../UILayer")
 script = ExtResource( 7 )
 UiLayerPath = NodePath("../UILayer")
 GamePath = NodePath("../Game")
+
+[node name="OnlineMatchErrorHandler" type="Node" parent="."]
+script = ExtResource( 10 )
+UiLayerPath = NodePath("../UILayer")

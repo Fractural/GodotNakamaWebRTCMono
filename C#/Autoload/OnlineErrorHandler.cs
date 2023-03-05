@@ -1,7 +1,6 @@
 ﻿using Godot;
 using System;
 using Fractural.GodotCodeGenerator.Attributes;
-using NakamaWebRTC;
 
 namespace NakamaWebRTCDemo
 {

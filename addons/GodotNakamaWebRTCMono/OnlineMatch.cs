@@ -198,7 +198,15 @@ namespace NakamaWebRTC
             [ErrorCode.WebRTCOfferError] = "Unable to create WebRTC offer",
         };
         public IReadOnlyCollection<string> SessionIDs => sessionIDToPlayers.Keys;
-        public IReadOnlyCollection<Player> Players => sessionIDToPlayers.Values;
+        public IReadOnlyCollection<Player> Players
+        {
+            get
+            {
+                var values = sessionIDToPlayers.Values.ToArray();
+                Array.Sort(values, (p1, p2) => p1.PeerID - p2.PeerID);
+                return values;
+            }
+        }
         #endregion
         #endregion
 
