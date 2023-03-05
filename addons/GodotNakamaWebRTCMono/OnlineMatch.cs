@@ -516,7 +516,6 @@ namespace NakamaWebRTC
         // Change a playing match back into a lobby
         public void ReopenMatch()
         {
-            Debug.Assert(MatchState == MatchState.Playing);
             if (Players.All(x => x.Status == PlayerStatus.Connected))
             {
                 if (Players.Count < MinPlayers)
@@ -526,12 +525,6 @@ namespace NakamaWebRTC
             }
             else
                 MatchState = MatchState.Connecting;
-
-            foreach (var player in Players)
-            {
-                PlayerJoined?.Invoke(player);
-                UpdateAndEmitPlayerStatus(player, player.Status);
-            }
             
             if (Players.Count >= MinPlayers)
                 MatchReady?.Invoke(Players);

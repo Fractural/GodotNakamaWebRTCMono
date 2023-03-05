@@ -11,8 +11,8 @@ namespace NakamaWebRTCDemo
     {
         public Player Player { get; set; }
         public int Score { get; set; }
-        // Used by host
-        public bool IsSetUp { get; set; } = false;
+
+        public override string ToString() => $"{{Player: {Player} Score: {Score}}}";
     }
 
     /// <summary>
@@ -24,7 +24,7 @@ namespace NakamaWebRTCDemo
     /// Multiplayer games are matched-based, and end when one player
     /// reaches a certain score. After the match is over the lobby is closed.
     /// </summary>
-    public partial class GameSession : Node
+    public partial class GameSession : Node, IBufferSerializable
     {
         public readonly int WinningScore = 5;
 
@@ -76,24 +76,33 @@ namespace NakamaWebRTCDemo
                 AddPlayer(player);
         }
 
-        public void AddPlayer(Player player)
+        public GameSessionPlayer AddPlayer(Player player)
         {
-            GD.Print("Game Sesesion add player with peerID: " + player.PeerID);
-            GameSessionPlayers.Add(new GameSessionPlayer()
+            if (!GameSessionPlayers.Any(x => x.Player == player))
             {
-                Player = player
-            });
+                var newSessionPlayer = new GameSessionPlayer()
+                {
+                    Player = player
+                };
+                GameSessionPlayers.Add(newSessionPlayer);
+                return newSessionPlayer;
+            }
+            return null;
         }
 
         public void RemovePlayer(Player player)
         {
-            game.RemovePlayer(player);
-            GameSessionPlayers.RemoveAll(x => x.Player == player);
+            if (GameSessionPlayers.Any(x => x.Player == player))
+            {
+                game.RemovePlayer(player);
+                GameSessionPlayers.RemoveAll(x => x.Player == player);
+            }
         }
 
         // Ran on everyone
         public void StartGame()
         {
+            game.StopGame();
             GD.Print($"Start game with {string.Join(",", GameSessionPlayers)}");
             // Inject the players every time we start the game
             // This is incase a player leaves in the middle of the match,
@@ -101,16 +110,34 @@ namespace NakamaWebRTCDemo
             game.LoadAndStartGame(GameSessionPlayers.Select(x => x.Player).ToList());
         }
 
+        public void RestartGame() => StartGame();
+
         public void StopSession()
         {
             Reset();
             SessionStopped?.Invoke();
         }
 
-        public void RestartGame()
+        public void Serialize(StreamPeerBuffer buffer)
         {
-            game.StopGame();
-            StartGame();
+            buffer.Put32(GameSessionPlayers.Count);
+            foreach (var player in GameSessionPlayers)
+            {
+                buffer.Put32(player.Player.PeerID);
+                buffer.Put32(player.Score);
+            }
+        }
+
+        public void Deserialize(StreamPeerBuffer buffer)
+        {
+            int count = buffer.Get32();
+            for (int i = 0; i < count; i++)
+            {
+                int peerID = buffer.Get32();
+                int score = buffer.Get32();
+                
+                GetSessionPlayer(peerID).Score = score;
+            }
         }
 
         // Called on everyone, since when the host makes the game start,
@@ -137,13 +164,14 @@ namespace NakamaWebRTCDemo
             winningSessionPlayer.Score += 1;
 
             bool isMatchOver = winningSessionPlayer.Score >= WinningScore;
-            this.TryRpc(nameof(ShowResults), winningPlayerID, winningSessionPlayer.Score, isMatchOver);
+            this.TryRpc(RpcType.Local | RpcType.Server, nameof(ShowResults), winningPlayerID, winningSessionPlayer.Score, isMatchOver);
         }
 
         // Called on everyone
         [RemoteSync]
         private async void ShowResults(int playerID = 0, int score = 0, bool isMatchOver = false)
         {
+            GD.Print("Winning player score: " + score);
             var winningSessionPlayer = GetSessionPlayer(playerID);
             winningSessionPlayer.Score = score;
 

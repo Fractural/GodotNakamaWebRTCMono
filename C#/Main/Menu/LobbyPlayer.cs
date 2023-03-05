@@ -35,7 +35,7 @@ namespace NakamaWebRTCDemo
         [OnReadyGet]
         private Label scoreLabel;
 
-        public Player Player { get; private set; }
+        public GameSessionPlayer SessionPlayer { get; private set; }
 
         private LobbyPlayerStatus status;
         public LobbyPlayerStatus Status
@@ -47,26 +47,19 @@ namespace NakamaWebRTCDemo
                 statusLabel.Text = LobbyPlayerStatusMessages[value];
             }
         }
-        private int score;
-        public int Score
+
+        public void Construct(GameSessionPlayer player, LobbyPlayerStatus status = LobbyPlayerStatus.Connecting)
         {
-            get => score;
-            set
-            {
-                score = value;
-                if (score == 0)
-                    scoreLabel.Text = "";
-                else
-                    scoreLabel.Text = value.ToString();
-            }
+            SessionPlayer = player;
+            nameLabel.Text = player.Player.Username;
+            Status = status;
+
+            UpdateDisplay();
         }
 
-        public void Construct(Player player, LobbyPlayerStatus status = LobbyPlayerStatus.Connecting, int score = 0)
+        public void UpdateDisplay()
         {
-            Player = player;
-            nameLabel.Text = player.Username;
-            Status = status;
-            Score = score;
+            scoreLabel.Text = SessionPlayer.Score > 0 ? SessionPlayer.Score.ToString() : "";
         }
     }
 }

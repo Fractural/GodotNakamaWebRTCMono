@@ -85,7 +85,6 @@ UiLayerPath = NodePath("../../UILayer")
 [node name="OnlineErrorHandler" type="Node" parent="."]
 script = ExtResource( 7 )
 UiLayerPath = NodePath("../UILayer")
-GamePath = NodePath("../Game")
 
 [node name="OnlineMatchErrorHandler" type="Node" parent="."]
 script = ExtResource( 10 )

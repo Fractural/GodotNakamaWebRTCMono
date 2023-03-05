@@ -51,9 +51,7 @@ namespace NakamaWebRTCDemo
             GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
-            {
-                Players = players
-            });
+            { });
         }
 
         public void MatchCreated(string matchID)
@@ -101,12 +99,13 @@ namespace NakamaWebRTCDemo
         private void ReopenMatch()
         {
             GD.Print("Reopening match");
-            Reset();
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
             {
                 MatchID = OnlineMatch.Global.MatchID,
                 GameSessionPlayers = gameSession.GameSessionPlayers
             });
+            foreach (var lobbyPlayer in lobbyScreen.LobbyPlayers)
+                lobbyPlayer.Status = LobbyPlayerStatus.Connected;
             OnlineMatch.Global.ReopenMatch();
         }
         #endregion
@@ -170,6 +169,11 @@ namespace NakamaWebRTCDemo
             var lobbyPlayer = lobbyScreen.GetLobbyPlayer(peerID);
             lobbyPlayer.Status = LobbyPlayerStatus.Readied;
 
+            ServerStartIfReady();
+        }
+
+        private void ServerStartIfReady()
+        {
             // As host, start the game if everyone is readied
             if (GetTree().IsNetworkServer())
             {
@@ -227,8 +231,10 @@ namespace NakamaWebRTCDemo
         private void OnPlayerJoined(Player player)
         {
             GD.Print(nameof(OnPlayerJoined) + ": " + player.PeerID);
-            gameSession.AddPlayer(player);
-            lobbyScreen.AddLobbyPlayer(player);
+            var newSessionPlayer = gameSession.AddPlayer(player);
+            if (newSessionPlayer == null)
+                return;
+            lobbyScreen.AddLobbyPlayer(newSessionPlayer);
         }
 
         private void OnPlayerLeft(Player player)
@@ -237,6 +243,9 @@ namespace NakamaWebRTCDemo
 
             gameSession.RemovePlayer(player);
             lobbyScreen.RemovePlayer(player);
+
+            if (State == StateType.Lobby)
+                ServerStartIfReady();
         }
 
         private void OnMatchNotReady() => lobbyScreen.SetReadyButtonEnabled(false);
@@ -258,20 +267,29 @@ namespace NakamaWebRTCDemo
                 if (lobbyPlayer.Status != LobbyPlayerStatus.Readied)
                     lobbyPlayer.Status = LobbyPlayerStatus.Connected;
 
-                // As host, notify player about readied players
                 if (GetTree().IsNetworkServer())
                 {
+                    // As host, notify player about readied players
                     foreach (var currLobbyPlayer in lobbyScreen.LobbyPlayers)
                     {
                         if (currLobbyPlayer.Status == LobbyPlayerStatus.Readied)
-                            RpcId(player.PeerID, nameof(PlayerReady), currLobbyPlayer.Player.PeerID);
+                            RpcId(player.PeerID, nameof(PlayerReady), currLobbyPlayer.SessionPlayer.Player.PeerID);
                     }
+                    // As host, notify player about existing GameSessionPlayers
+                    RpcId(player.PeerID, nameof(SyncMatchData), gameSession.Serialize());
                 }
             }
             else if (status == PlayerStatus.Connecting)
             {
                 lobbyPlayer.Status = LobbyPlayerStatus.Connecting;
             }
+        }
+        
+        [RemoteSync]
+        private void SyncMatchData(byte[] bytes)
+        {
+            gameSession.Deserialize(bytes.ToBuffer());
+            lobbyScreen.UpdateLobbyPlayerDisplays();
         }
         #endregion
     }

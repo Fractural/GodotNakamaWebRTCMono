@@ -11,7 +11,6 @@ namespace NakamaWebRTCDemo
     {
         public class Args
         {
-            public IReadOnlyCollection<Player> Players { get; set; }
             public IReadOnlyCollection<GameSessionPlayer> GameSessionPlayers { get; set; }
             public string MatchID { get; set; }
         }
@@ -52,16 +51,13 @@ namespace NakamaWebRTCDemo
                 uiLayer.ShowScreen(nameof(MatchScreen));
                 await OnlineMatch.Global.Leave();
             };
-
-            IReadOnlyCollection<Player> players = new Player[0];
+            
             string matchID = "";
 
             Args castedArgs = null;
             if (args is Args)
             {
                 castedArgs = (Args)args;
-                if (castedArgs.Players != null)
-                    players = castedArgs.Players;
                 if (castedArgs.MatchID != null)
                     matchID = castedArgs.MatchID;
             }
@@ -70,6 +66,7 @@ namespace NakamaWebRTCDemo
 
             if (castedArgs?.GameSessionPlayers != null)
             {
+                GD.Print("Using game session players " + string.Join(", ", castedArgs.GameSessionPlayers));
                 // We have come here as an intermission.
                 // Add game session players.
                 foreach (var sessionPlayer in castedArgs.GameSessionPlayers)
@@ -77,18 +74,8 @@ namespace NakamaWebRTCDemo
                 // Let people ready themselves up -- No need to
                 // wait for MatchReady because everyone is already
                 // connected to each other.
-                SetReadyButtonEnabled(true);
             }
-            else
-            {
-                // We've made a game/joined a game.
-                // Add players that are already in the lobby if any.
-                foreach (var player in players)
-                    AddLobbyPlayer(player);
-                // Disable the ready button by default until OnlineMatch
-                // tells us everyone is connected via WebRTC.
-                SetReadyButtonEnabled(false);
-            }
+            SetReadyButtonEnabled(false);
 
             // NOTE: MatchID is only passed in when
             // the room is first made. During 
@@ -117,24 +104,11 @@ namespace NakamaWebRTCDemo
 
         public LobbyPlayer AddLobbyPlayer(GameSessionPlayer sessionPlayer)
         {
-            if (!LobbyPlayers.Any(x => x.Player == sessionPlayer.Player))
+            if (!LobbyPlayers.Any(x => x.SessionPlayer == sessionPlayer))
             {
                 LobbyPlayer lobbyPlayer = lobbyPlayerPrefab.Instance<LobbyPlayer>();
                 lobbyPlayerContainer.AddChild(lobbyPlayer);
-                lobbyPlayer.Construct(sessionPlayer.Player, LobbyPlayerStatus.Waiting, sessionPlayer.Score);
-                LobbyPlayers.Add(lobbyPlayer);
-                return lobbyPlayer;
-            }
-            return null;
-        }
-
-        public LobbyPlayer AddLobbyPlayer(Player player)
-        {
-            if (!LobbyPlayers.Any(x => x.Player == player))
-            {
-                LobbyPlayer lobbyPlayer = lobbyPlayerPrefab.Instance<LobbyPlayer>();
-                lobbyPlayerContainer.AddChild(lobbyPlayer);
-                lobbyPlayer.Construct(player, LobbyPlayerStatus.Connecting);
+                lobbyPlayer.Construct(sessionPlayer, LobbyPlayerStatus.Waiting);
                 LobbyPlayers.Add(lobbyPlayer);
                 return lobbyPlayer;
             }
@@ -143,7 +117,7 @@ namespace NakamaWebRTCDemo
 
         public void RemovePlayer(Player player)
         {
-            LobbyPlayer lobbyPlayer = LobbyPlayers.Find(x => x.Player == player);
+            LobbyPlayer lobbyPlayer = LobbyPlayers.Find(x => x.SessionPlayer.Player == player);
             if (lobbyPlayer != null)
             {
                 lobbyPlayer.QueueFree();
@@ -153,12 +127,12 @@ namespace NakamaWebRTCDemo
 
         public LobbyPlayer GetLobbyPlayer(int peerID)
         {
-            return LobbyPlayers.Find(x => x.Player.PeerID == peerID);
+            return LobbyPlayers.Find(x => x.SessionPlayer.Player.PeerID == peerID);
         }
 
         public LobbyPlayer GetLobbyPlayer(Player player)
         {
-            return LobbyPlayers.Find(x => x.Player == player);
+            return LobbyPlayers.Find(x => x.SessionPlayer.Player == player);
         }
 
         public void SetReadyButtonEnabled(bool enabled)
@@ -166,6 +140,12 @@ namespace NakamaWebRTCDemo
             readyButton.Disabled = !enabled;
             if (enabled)
                 readyButton.GrabFocus();
+        }
+
+        public void UpdateLobbyPlayerDisplays()
+        {
+            foreach (var player in LobbyPlayers)
+                player.UpdateDisplay();
         }
 
         private void OnReadyButtonPressed()

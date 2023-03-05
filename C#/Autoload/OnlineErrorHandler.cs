@@ -8,8 +8,6 @@ namespace NakamaWebRTCDemo
     {
         [OnReadyGet]
         private UILayer uiLayer;
-        [OnReadyGet]
-        private Game game;
 
         [OnReady]
         public void RealReady()
@@ -28,7 +26,6 @@ namespace NakamaWebRTCDemo
 
         private void NakamaConnectionError(Exception ex)
         {
-            game.StopGame();
             uiLayer.ShowScreen(nameof(TitleScreen));
             uiLayer.ShowMessage("Cannot connect to Nakama server. Is Nakama running?", 2f);
         }
