@@ -1,4 +1,4 @@
-# Godot Nakama WebRTC
+# Godot Nakama WebRTC 🕸️
 
 A C# version of [Snopek Game's Nakama WebRTC addon](https://gitlab.com/snopek-games/godot-nakama-webrtc)
 
@@ -36,6 +36,10 @@ to attack. The keyboard controls are WASD for movement and SPACE for attack.
 
 In local mode, you can control player 2 using the arrow keys and ENTER to
 attack.
+
+### Config
+
+Please duplicate `config.template.yml` after cloning the repository and rename it to `config.yml`. The `config.yml` will let you specify credentials for using Twilio TURN servers. 
 
 ## Credits
 

@@ -19,7 +19,7 @@ services:
       - "-ecx"
       - >
           /nakama/nakama migrate up --database.address root@cockroachdb:26257 &&
-          exec /nakama/nakama --config /nakama/data/local.yml --name nakama1 --database.address root@cockroachdb:26257
+          exec /nakama/nakama --config /nakama/data/config.yml --name nakama1 --database.address root@cockroachdb:26257
     restart: always
     links:
       - "cockroachdb:db"

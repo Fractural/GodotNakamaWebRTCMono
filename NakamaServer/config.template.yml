@@ -1,0 +1,7 @@
+logger:
+  level: "DEBUG"
+runtime:
+  env:
+  - "twilio_account_sid=your_account_sid"
+  - "twilio_auth_token=your_auth_token"
+  - "twilio_turn_credentials_ttl=number seconds that TURN credentials are valid"
