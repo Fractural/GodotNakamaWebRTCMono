@@ -1,4 +1,6 @@
 ﻿using Godot;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -87,6 +89,8 @@ namespace NakamaWebRTC
 
         public static GDC.Dictionary ToGDDict(this object obj)
         {
+            if (obj == null)
+                return null;
             GDC.Dictionary dict = new GDC.Dictionary();
             foreach (var prop in obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
             {
@@ -97,10 +101,81 @@ namespace NakamaWebRTC
 
         public static GDC.Array<T> ToGDArray<T>(this IEnumerable<T> array)
         {
+            if (array == null)
+                return null;
             var gdArray = new GDC.Array<T>();
-            foreach (var eleme in array)
-                gdArray.Add(eleme);
+            foreach (var elem in array)
+                gdArray.Add(elem);
             return gdArray;
+        }
+
+        public static GDC.Array ToRawGDArray(this IEnumerable array)
+        {
+            if (array == null)
+                return null;
+            var gdArray = new GDC.Array();
+            foreach (var elem in array)
+                gdArray.Add(elem);
+            return gdArray;
+        }
+
+
+        /// <summary>
+        /// Returns either a GDC.Array or GDC.Dictionary
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        public static object RecurseToGDCollection(this object obj)
+        {
+            if (obj == null)
+                return null;
+            if (obj is IEnumerable<object> enumerable)
+                return RecurseToRawGDArray(enumerable);
+            return RecurseToGDDict(obj);
+        }
+
+        public static GDC.Array RecurseToRawGDArray(this IEnumerable array)
+        {
+            if (array == null)
+                return null;
+            var gdArray = new GDC.Array();
+            foreach (var elem in array)
+            {
+                if (elem is IEnumerable enumerableElem)
+                    gdArray.Add(enumerableElem.RecurseToRawGDArray());
+                else if (Type.GetTypeCode(elem.GetType()) == TypeCode.Object)
+                    gdArray.Add(elem.ToGDDict());
+            }
+            return gdArray;
+        }
+
+        public static GDC.Dictionary RecurseToGDDict(this object obj)
+        {
+            if (obj == null)
+                return null;
+            GDC.Dictionary dict = new GDC.Dictionary();
+            foreach (var prop in obj.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
+            {
+                var propValue = prop.GetValue(obj, null);
+                if (propValue == null)
+                    dict[prop.Name] = null;
+                else
+                {
+                    if (prop.PropertyType == typeof(IEnumerable))
+                        dict[prop.Name] = ((IEnumerable)propValue).RecurseToRawGDArray();
+                    else if (Type.GetTypeCode(prop.PropertyType) == TypeCode.Object)
+                        dict[prop.Name] = propValue.ToGDDict();
+                }
+            }
+            return dict;
+        }
+
+        public static object FromJSON(this string json)
+        {
+            var result = JSON.Parse(json);
+            if (result.Error != Error.Ok)
+                return null;
+            return result.Result;
         }
 
         public static GDC.Array GDParams(params object[] array)

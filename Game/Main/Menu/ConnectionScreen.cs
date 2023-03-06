@@ -6,6 +6,7 @@ using NakamaWebRTC;
 using Nakama;
 using System.Threading.Tasks;
 using System.Net.Http;
+using System.Linq;
 
 namespace NakamaWebRTCDemo
 {
@@ -111,7 +112,7 @@ namespace NakamaWebRTCDemo
                     return;
                 }
 
-                SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+                SetSessionAndChangeScreen(c, nakamaSession, saveCredentials);
             });
         }
 
@@ -168,25 +169,43 @@ namespace NakamaWebRTCDemo
                     {
                         message = "Unable to create account.";
                     }
-                    uiLayer.ShowMessage(message);
+                    uiLayer.ShowMessage(message, 2);
 
                     Online.Global.NakamaSession = null;
                     return;
                 }
 
-                SetSessionAndChangeScreen(nakamaSession, saveCredentials);
+                SetSessionAndChangeScreen(c, nakamaSession, saveCredentials);
             });
         }
 
-        private void SetSessionAndChangeScreen(ISession session, bool saveCredentials)
+        private async void SetSessionAndChangeScreen(Client client, ISession session, bool saveCredentials)
         {
             if (saveCredentials)
                 SaveCredentials();
             Online.Global.NakamaSession = session;
             uiLayer.HideMessage();
 
-            if (nextScreen != "")
-                uiLayer.ShowScreen(nextScreen);
+            try
+            {
+                var rpcResult = await client.RpcAsync(session, "get_ice_servers");
+                var jsonParseResult = JSON.Parse(rpcResult.Payload);
+                if (jsonParseResult.Error != Error.Ok)
+                    throw new Exception("Could not parse get_ice_servers payload as JSON.");
+                var result = (GDC.Dictionary)jsonParseResult.Result;
+
+                OnlineMatch.Global.IceServers = result.Get<GDC.Array>("response.ice_servers").RecurseToRawGDArray();
+
+                Console.Print("Succesfully set up ice servers: " + JSON.Print(result.Get<GDC.Array>("response.ice_servers")));
+
+                if (nextScreen != "")
+                    uiLayer.ShowScreen(nextScreen);
+            }
+            catch (Exception e)
+            {
+                Console.PrintErr(e.ToString());
+                uiLayer.ShowMessage("Fetching ICE servers failed.", 2);
+            }
         }
 
         private void TryLoadCredentials()

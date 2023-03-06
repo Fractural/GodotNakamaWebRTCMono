@@ -110,7 +110,7 @@ config/icon="res://icon.png"
 
 [autoload]
 
-OnlineMatch="*res://addons/GodotNakamaWebRTCMono/OnlineMatch.cs"
+OnlineMatch="*res://addons/NakamaWebRTCMono/OnlineMatch.cs"
 Online="*res://Game/Autoload/Online.cs"
 GameState="*res://Game/Autoload/GameState.cs"
 
