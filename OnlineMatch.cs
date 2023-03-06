@@ -64,18 +64,6 @@ namespace NakamaWebRTC
         WebRTCOfferError,
     }
 
-    public class IceServersConfig
-    {
-        public string[] Urls { get; set; } = new string[0];
-        public GDC.Dictionary ToGDDict()
-        {
-            return new
-            {
-                urls = Urls
-            }.ToGDDict();
-        }
-    }
-
     public class MatchmakingArgs
     {
         public string Query = "*";
@@ -97,10 +85,12 @@ namespace NakamaWebRTC
         public int MinPlayers { get; set; } = 2;
         public int MaxPlayers { get; set; } = 4;
         public string ClientVersion => "dev";
-        public IceServersConfig IceServersConfig { get; set; } = new IceServersConfig()
-        {
-            Urls = new[] { "stun:stun.l.google.com:19302" },
-        };
+        public GDC.Array IceServers { get; set; } = new[] {
+            new
+            {
+                urls = new [] { "stun:stun.1.google.com:19302" }
+            }
+        }.RecurseToRawGDArray();
 
         public MatchmakingArgs DefaultMatchmakingArgs { get; private set; } = new MatchmakingArgs()
         {
@@ -525,7 +515,7 @@ namespace NakamaWebRTC
             }
             else
                 MatchState = MatchState.Connecting;
-            
+
             if (Players.Count >= MinPlayers)
                 MatchReady?.Invoke(Players);
             else
@@ -649,7 +639,7 @@ namespace NakamaWebRTC
         {
             MatchID = match.Id;
             MySessionID = match.Self.SessionId;
-            
+
             GD.Print("OnNakamaMatchCreated " + match.Self + " || " + MySessionID);
             Player myPlayer = Player.FromPresence(match.Self, 1);
             sessionIDToPlayers[MySessionID] = myPlayer;
@@ -951,7 +941,7 @@ namespace NakamaWebRTC
             var webrtcPeer = new WebRTCPeerConnection();
             webrtcPeer.Initialize(new
             {
-                iceServers = IceServersConfig.ToGDDict()
+                iceServers = IceServers
             }.ToGDDict());
 
             webrtcPeer.Connect("session_description_created", this, nameof(OnWebRTCPeerSessionDescriptionCreated), Utils.GDParams(player.SessionID));
