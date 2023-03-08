@@ -76,8 +76,8 @@ namespace NakamaWebRTC
             {
                 if (i == keys.Length - 1)
                 {
-                    if (dictionary.Contains(key))
-                        return (T)dictionary[key];
+                    if (dictionary.Contains(keys[i]))
+                        return (T)dictionary[keys[i]];
                     return defaultReturn;
                 }
                 dictionary = dictionary.Get<GDC.Dictionary>(keys[i]);
