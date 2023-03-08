@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/fractural/godotnakamawebrtcmono/nakamaserver/utils"
 	"github.com/heroiclabs/nakama-common/api"
 	"github.com/heroiclabs/nakama-common/rtapi"
 	"github.com/heroiclabs/nakama-common/runtime"
@@ -13,19 +14,17 @@ var enabledRtMessages = []NakamaRTMessage{
 	MatchJoin,
 	MatchCreate,
 	MatchLeave,
+	MatchDataSend,
+	MatchmakerAdd,
+	MatchmakerRemove,
+	Rpc,
+	Ping,
+	Pong,
 }
 
 var enabledMessages = []NakamaMessage{
 	AuthenticateEmail,
-}
-
-func enabledMessagesContains(message NakamaMessage) bool {
-	for _, enabledMessage := range enabledMessages {
-		if enabledMessage == message {
-			return true
-		}
-	}
-	return false
+	SessionRefresh,
 }
 
 func removeAt[T any](slice []T, i int) []T {
@@ -46,7 +45,7 @@ func remove[T comparable](slice []T, value T) []T {
 RegisterGuards is a function that disables the API for messages that are not in use.
 The enabled APIs are stored in the enabledRTMessages and enabledMessages arrays.
 */
-func RegisterGuards(initializer runtime.Initializer) error {
+func RegisterGuards(initializer runtime.Initializer, logger runtime.Logger) error {
 	// Create disabled arrays by including only the messages
 	// that are not present in the enabled arrays.
 	disabledRtMessages := make([]NakamaRTMessage, len(_NakamaRTMessage_index))
@@ -57,13 +56,20 @@ func RegisterGuards(initializer runtime.Initializer) error {
 		disabledRtMessages = remove(disabledRtMessages, enabledRtMessages[i])
 	}
 
+	disabledMessagesStr := ""
 	disabledMessages := make([]NakamaMessage, len(_NakamaRTMessage_index))
 	for i := 0; i < len(disabledMessages); i++ {
 		disabledMessages[i] = NakamaMessage(i)
+		disabledMessagesStr += NakamaRTMessage(i).String()
 	}
 	for i := 0; i < len(enabledMessages); i++ {
 		disabledMessages = remove(disabledMessages, enabledMessages[i])
 	}
+
+	logger.Info("Enabled messages for: %s", utils.String(enabledMessages))
+	logger.Info("Enabled real-time messages for: %s", utils.String(enabledRtMessages))
+	logger.Info("Disabled messages for: %s", utils.String(disabledMessages))
+	logger.Info("Disabled real-time messages for: %s", utils.String(disabledRtMessages))
 
 	for _, rtMessage := range disabledRtMessages {
 		if err := initializer.RegisterBeforeRt(rtMessage.String(), func(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runtime.NakamaModule, envelope *rtapi.Envelope) (*rtapi.Envelope, error) {

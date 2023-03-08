@@ -17,7 +17,7 @@ func InitModule(ctx context.Context, logger runtime.Logger, db *sql.DB, nk runti
 		return err
 	}
 
-	if err := guard.RegisterGuards(initializer); err != nil {
+	if err := guard.RegisterGuards(initializer, logger); err != nil {
 		return err
 	}
 
