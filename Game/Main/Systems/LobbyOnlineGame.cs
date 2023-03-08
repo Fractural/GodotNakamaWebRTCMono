@@ -47,7 +47,7 @@ namespace NakamaWebRTCDemo
         public void MatchmakerMatched(IReadOnlyCollection<Player> players)
         {
             Reset();
-            InitEvents();
+            InitEventsAndSettings();
             GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen));
@@ -60,7 +60,7 @@ namespace NakamaWebRTCDemo
         public void MatchCreated(string matchID)
         {
             Reset();
-            InitEvents();
+            InitEventsAndSettings();
             GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
@@ -72,7 +72,7 @@ namespace NakamaWebRTCDemo
         public void MatchJoined(string matchID)
         {
             Reset();
-            InitEvents();
+            InitEventsAndSettings();
             GameState.Global.OnlinePlay = true;
             State = StateType.Lobby;
             uiLayer.ShowScreen(nameof(LobbyScreen), new LobbyScreen.Args()
@@ -126,7 +126,7 @@ namespace NakamaWebRTCDemo
                 // Show MatchID if we're in a custom match to let more people join
                 args.MatchID = OnlineMatch.Global.MatchID;
             }
-                
+
             uiLayer.ShowScreen(nameof(LobbyScreen), args);
             foreach (var lobbyPlayer in lobbyScreen.LobbyPlayers)
                 lobbyPlayer.Status = LobbyPlayerStatus.Connected;
@@ -135,9 +135,13 @@ namespace NakamaWebRTCDemo
         #endregion
 
         #region Event Subscriptions
-        private void InitEvents()
+        private void InitEventsAndSettings()
         {
+            // Settings
+            OnlineMatch.Global.UseNetworkRelay = OnlineMatch.NetworkRelay.Auto;
             OnlineMatch.Global.AllowJoiningMidMatch = false;
+
+            // Events
             OnlineMatch.Global.OnError += OnOnlineMatchError;
             OnlineMatch.Global.Disconnected += OnOnlineMatchDisconnected;
             OnlineMatch.Global.PlayerJoined += OnPlayerJoined;
@@ -310,7 +314,7 @@ namespace NakamaWebRTCDemo
                 lobbyPlayer.Status = LobbyPlayerStatus.Connecting;
             }
         }
-        
+
         [RemoteSync]
         private void SyncMatchData(byte[] bytes)
         {

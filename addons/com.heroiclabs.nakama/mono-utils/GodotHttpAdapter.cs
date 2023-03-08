@@ -20,7 +20,8 @@ using System.Threading.Tasks;
 using Nakama.TinyJson;
 using Godot;
 
-namespace Nakama {
+namespace Nakama
+{
 
     /// <summary>
     /// An HTTP adapter which uses Godot's HTTPRequest node.
@@ -28,7 +29,8 @@ namespace Nakama {
     /// <remarks>
     /// Note Content-Type header is always set as 'application/json'.
     /// </remarks>
-    public class GodotHttpAdapter : Node, IHttpAdapter {
+    public class GodotHttpAdapter : Node, IHttpAdapter
+    {
 
         /// <inheritdoc cref="IHttpAdapter.Logger"/>
         public ILogger Logger { get; set; }
@@ -43,33 +45,39 @@ namespace Nakama {
             var req = new HTTPRequest();
             req.Timeout = timeout;
 
-            if (OS.GetName() != "HTML5") {
+            if (OS.GetName() != "HTML5")
+            {
                 req.UseThreads = true;
             }
 
             var godot_method = HTTPClient.Method.Get;
-            if (method == "POST") {
+            if (method == "POST")
+            {
                 godot_method = HTTPClient.Method.Post;
             }
-            else if (method == "PUT") {
+            else if (method == "PUT")
+            {
                 godot_method = HTTPClient.Method.Put;
             }
-            else if (method == "DELETE") {
+            else if (method == "DELETE")
+            {
                 godot_method = HTTPClient.Method.Delete;
             }
-            else if (method == "HEAD") {
+            else if (method == "HEAD")
+            {
                 godot_method = HTTPClient.Method.Head;
             }
 
             var headers_array = new String[headers.Count + 1];
             headers_array[0] = "Accept: application/json";
             int index = 1;
-            foreach (var item in headers) {
+            foreach (var item in headers)
+            {
                 headers_array[index] = item.Key + ": " + item.Value;
                 index++;
             }
 
-            string body_string = System.Text.Encoding.UTF8.GetString(body);
+            string body_string = body != null ? System.Text.Encoding.UTF8.GetString(body) : "";
 
             AddChild(req);
             req.Request(uri.ToString(), headers_array, true, godot_method, body_string);
@@ -86,13 +94,14 @@ namespace Nakama {
 
             Logger?.InfoFormat("Received: status={0}, contents='{1}'", response_code, response_body);
 
-            if (result == HTTPRequest.Result.Success && response_code >= 200 && response_code <= 299) {
+            if (result == HTTPRequest.Result.Success && response_code >= 200 && response_code <= 299)
+            {
                 return response_body;
             }
 
             var decoded = response_body.FromJson<Dictionary<string, object>>();
             string message = decoded.ContainsKey("message") ? decoded["message"].ToString() : string.Empty;
-            int grpcCode = decoded.ContainsKey("code") ? (int) decoded["code"] : -1;
+            int grpcCode = decoded.ContainsKey("code") ? (int)decoded["code"] : -1;
 
             var exception = new ApiResponseException(response_code, message, grpcCode);
 
@@ -104,7 +113,8 @@ namespace Nakama {
             throw exception;
         }
 
-        private static bool IsTransientException(Exception e) {
+        private static bool IsTransientException(Exception e)
+        {
             return e is ApiResponseException apiException && (apiException.StatusCode >= 500 || apiException.StatusCode == -1);
         }
 

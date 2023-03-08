@@ -194,9 +194,9 @@ namespace NakamaWebRTCDemo
                     throw new Exception("Could not parse get_ice_servers payload as JSON.");
                 var result = (GDC.Dictionary)jsonParseResult.Result;
 
-                OnlineMatch.Global.IceServers = result.Get<GDC.Array>("response.ice_servers").RecurseToRawGDArray();
+                OnlineMatch.Global.IceServers = result.Get<GDC.Array>("response.ice_servers");
 
-                Console.Print("Succesfully set up ice servers: " + JSON.Print(result.Get<GDC.Array>("response.ice_servers")));
+                Console.Print("Succesfully set up ice servers: " + OnlineMatch.Global.IceServers.ToString());
 
                 if (nextScreen != "")
                     uiLayer.ShowScreen(nextScreen);
