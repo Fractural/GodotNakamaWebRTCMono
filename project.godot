@@ -102,6 +102,14 @@ _global_script_class_icons={
 "NakamaWriteStorageObject": ""
 }
 
+[FracturalCommons]
+
+Main/GenerateCSharpScriptsTable=false
+Main/GenerateVersionPreprocessorDefines=false
+"C# Resource Registry/ClassPrefix"=""
+"C# Resource Registry/SearchType"=0
+"C# Resource Registry/ResourceScriptDirectories"=[ "res://" ]
+
 [application]
 
 config/name="GodotNakamaWebRTCMono"
@@ -130,7 +138,7 @@ window/stretch/aspect="keep"
 
 [editor_plugins]
 
-enabled=PoolStringArray( "res://addons/multirun/plugin.cfg" )
+enabled=PoolStringArray( "res://addons/FracturalCommons/plugin.cfg", "res://addons/multirun/plugin.cfg" )
 
 [gdnative]
 

@@ -18,7 +18,7 @@ namespace NakamaWebRTCDemo
         private Node2D map;
         [OnReadyGet]
         private Node2D playerContainer;
-        
+
         [Export]
         public bool IsGameOver { get; set; } = false;
 
@@ -62,7 +62,7 @@ namespace NakamaWebRTCDemo
             AddChild(map);
 
             players.Sort((p1, p2) => p1.PeerID - p2.PeerID);
-            Console.Print("Players: " + players + "UniqueID: " + GetTree().GetNetworkUniqueId());
+            Console.Print("Players: " + players + (GameState.Global.OnlinePlay ? ("UniqueID: " + GetTree().GetNetworkUniqueId()) : ""));
 
             // Respawn players
             // Note that we need a playerIdx counter to assign spawn positions, since we cannot rely on
@@ -106,7 +106,7 @@ namespace NakamaWebRTCDemo
             foreach (Node child in playerContainer.GetChildren())
                 Console.Print("  --> " + child.Name);
             Console.Print("}");
-            
+
             return;
         }
 

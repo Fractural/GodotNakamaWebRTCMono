@@ -1,4 +1,5 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.Utils;
 using Godot;
 using NakamaWebRTC;
 using System.Collections.Generic;

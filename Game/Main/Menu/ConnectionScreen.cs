@@ -7,6 +7,7 @@ using Nakama;
 using System.Threading.Tasks;
 using System.Net.Http;
 using System.Linq;
+using Fractural.Utils;
 
 namespace NakamaWebRTCDemo
 {
@@ -231,11 +232,11 @@ namespace NakamaWebRTCDemo
         {
             var file = new File();
             file.Open(CredentialsFilePath, File.ModeFlags.Write);
-            file.StoreLine(JSON.Print(new
+            file.StoreLine(JSON.Print(new GDC.Dictionary()
             {
-                email = email,
-                password = password,
-            }.ToGDDict()));
+                ["email"] = email,
+                ["password"] = password
+            }));
             file.Close();
         }
     }

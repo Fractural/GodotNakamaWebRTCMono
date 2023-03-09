@@ -1,4 +1,5 @@
 using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.Utils;
 using Godot;
 using NakamaWebRTC;
 using System;
@@ -27,9 +28,9 @@ namespace NakamaWebRTCDemo
         [OnReady]
         public void RealReady()
         {
-            matchButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Matchmaker));
-            createButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Create));
-            joinButton.Connect("pressed", this, nameof(OnMatchButtonPressed), Utils.GDParams(MatchMode.Join));
+            matchButton.Connect("pressed", this, nameof(OnMatchButtonPressed), GDUtils.GDParams(MatchMode.Matchmaker));
+            createButton.Connect("pressed", this, nameof(OnMatchButtonPressed), GDUtils.GDParams(MatchMode.Create));
+            joinButton.Connect("pressed", this, nameof(OnMatchButtonPressed), GDUtils.GDParams(MatchMode.Join));
             pasteButton.Connect("pressed", this, nameof(OnPasteButtonPressed));
 
             OnlineMatch.Global.MatchmakerMatched += OnMatchmakerMatched;
@@ -63,11 +64,11 @@ namespace NakamaWebRTCDemo
             // If our session has expired, show the connection screen
             if (Online.Global.NakamaSession == null || Online.Global.NakamaSession.IsExpired)
             {
-                uiLayer.ShowScreen("ConnectionScreen", new
+                uiLayer.ShowScreen("ConnectionScreen", new GDC.Dictionary()
                 {
-                    nextScreen = "MatchScreen",
-                    reconnect = true,
-                }.ToGDDict());
+                    ["nextScreen"] = "MatchScreen",
+                    ["reconnect"] = true,
+                });
 
                 await Online.Global.SessionConnectedRaised();
 

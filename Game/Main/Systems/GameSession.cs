@@ -1,4 +1,5 @@
 ﻿using Fractural.GodotCodeGenerator.Attributes;
+using Fractural.Utils;
 using Godot;
 using NakamaWebRTC;
 using System;
@@ -135,7 +136,7 @@ namespace NakamaWebRTCDemo
             {
                 int peerID = buffer.Get32();
                 int score = buffer.Get32();
-                
+
                 GetSessionPlayer(peerID).Score = score;
                 Console.Print($"  --> [{peerID}] = {score}");
             }
