@@ -8,6 +8,7 @@ using System.Text;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Net.WebSockets;
+using Fractural.Utils;
 
 namespace NakamaWebRTC
 {
@@ -944,8 +945,8 @@ namespace NakamaWebRTC
                 iceServers = IceServers
             }.ToGDDict());
 
-            webrtcPeer.Connect("session_description_created", this, nameof(OnWebRTCPeerSessionDescriptionCreated), Utils.GDParams(player.SessionID));
-            webrtcPeer.Connect("ice_candidate_created", this, nameof(OnWebRTCPeerIceCandidateCreated), Utils.GDParams(player.SessionID));
+            webrtcPeer.Connect("session_description_created", this, nameof(OnWebRTCPeerSessionDescriptionCreated), GDUtils.GDParams(player.SessionID));
+            webrtcPeer.Connect("ice_candidate_created", this, nameof(OnWebRTCPeerIceCandidateCreated), GDUtils.GDParams(player.SessionID));
 
             webrtcPeers[player.SessionID] = webrtcPeer;
 
@@ -1005,7 +1006,7 @@ namespace NakamaWebRTC
                 {
                     Method = WebRTCPeerMethodPayload.MethodType.SetRemoteDescription,
                     Target = sessionID,
-                    Arguments = Utils.Params(type, sdp)
+                    Arguments = GDUtils.Params(type, sdp)
                 }.Serialize());
         }
 
@@ -1034,7 +1035,7 @@ namespace NakamaWebRTC
                 {
                     Method = WebRTCPeerMethodPayload.MethodType.AddIceCandidate,
                     Target = sessionID,
-                    Arguments = Utils.Params(media, index, name)
+                    Arguments = GDUtils.Params(media, index, name)
                 }.Serialize());
         }
 

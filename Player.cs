@@ -1,6 +1,7 @@
 ﻿using Godot;
 using GDC = Godot.Collections;
 using Nakama;
+using Fractural.Utils;
 
 namespace NakamaWebRTC
 {
